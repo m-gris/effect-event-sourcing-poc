@@ -52,11 +52,11 @@ describe("decide", () => {
       }]))
     })
 
-    it("CreateUser on Some(User) → Right([]) (idempotent no-op)", () => {
-      // IDEMPOTENCY PATTERN:
-      // CreateUser means "ensure user exists", not "birth a new user".
-      // If user already exists, intent is satisfied → no events, no error.
-      // This makes the system resilient to retries and duplicates.
+    it("CreateUser on Some(User) → Left(UserAlreadyExists)", () => {
+      // BIRTH SEMANTICS:
+      // CreateUser means "birth a new user" — can only happen once.
+      // If user already exists, it's an error, not a silent no-op.
+      // This makes the command's meaning unambiguous.
       const existingUser: User = { id: userId, firstName, lastName }
       const command: CreateUser = {
         _tag: "CreateUser",
@@ -67,12 +67,12 @@ describe("decide", () => {
 
       const result = decide(Option.some(existingUser), command)
 
-      expect(result).toEqual(Either.right([]))
+      expect(result).toEqual(Either.left({ _tag: "UserAlreadyExists" }))
     })
   })
 
   describe("ChangeFirstName", () => {
-    it("ChangeFirstName on Some(User) → Right([UserNameChanged])", () => {
+    it("ChangeFirstName on Some(User) → Right([FirstNameChanged])", () => {
       const existingUser: User = { id: userId, firstName, lastName }
       const newFirstName = "Pierre" as User["firstName"]
       const command: ChangeFirstName = {
@@ -84,9 +84,8 @@ describe("decide", () => {
       const result = decide(Option.some(existingUser), command)
 
       expect(result).toEqual(Either.right([{
-        _tag: "UserNameChanged",
+        _tag: "FirstNameChanged",
         id: userId,
-        field: "firstName",
         oldValue: firstName,
         newValue: newFirstName
       }]))
@@ -127,7 +126,7 @@ describe("decide", () => {
 
   describe("ChangeLastName", () => {
 
-    it("ChangeLastName on Some(User) → Right([UserNameChanged])", () => {
+    it("ChangeLastName on Some(User) → Right([LastNameChanged])", () => {
       const existingUser: User = { id: userId, firstName, lastName }
       const newLastName = "Martin" as User["lastName"]
       const command: ChangeLastName = {
@@ -139,9 +138,8 @@ describe("decide", () => {
       const result = decide(Option.some(existingUser), command)
 
       expect(result).toEqual(Either.right([{
-        _tag: "UserNameChanged",
+        _tag: "LastNameChanged",
         id: userId,
-        field: "lastName",
         oldValue: lastName,
         newValue: newLastName
       }]))

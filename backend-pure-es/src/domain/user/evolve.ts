@@ -59,7 +59,8 @@ export const evolve = (state: Option<User>, event: UserEvent): Option<User> => {
   // Scala equivalent:
   //   event match {
   //     case UserCreated(id, firstName, lastName) => ...
-  //     case UserNameChanged(id, field, oldValue, newValue) => ...
+  //     case FirstNameChanged(id, oldValue, newValue) => ...
+  //     case LastNameChanged(id, oldValue, newValue) => ...
   //   }
   //
   switch (event._tag) {
@@ -72,27 +73,53 @@ export const evolve = (state: Option<User>, event: UserEvent): Option<User> => {
         lastName: event.lastName
       })
 
-    case "UserNameChanged":
-      // Update event: modify the relevant field.
+    case "FirstNameChanged":
+      // Update event: modify firstName.
       // We map over the Option — if state is None, this is a no-op (shouldn't happen
       // in a well-formed event stream, but we handle it gracefully).
+      //
+      // TYPE SAFETY: With separate events, event.newValue is already FirstName (branded).
+      // No type assertions needed — the event schema guarantees the correct type.
       return Option.map(state, (user) => ({
         // TS SYNTAX: `...user` — spread operator
         // Copies all properties from `user` into this new object.
         // Like Scala's `.copy()` but copies ALL fields, not specific ones.
         // Similar to Python's `{**dict}` or Rust's `..struct` syntax.
         ...user,
+        firstName: event.newValue
+      }))
 
-        // TS SYNTAX: `[event.field]: value` — computed property name
-        // The expression in brackets is EVALUATED to get the property key.
-        // Here: if event.field is "firstName", this becomes `firstName: event.newValue`
-        //
-        // NOT like Python's walrus operator `:=` (which is assignment expression).
-        // This is object literal syntax: `{ [dynamicKey]: value }`
-        //
-        // Combined with spread: "copy user, but override the field named by event.field"
-        // Scala equivalent would need reflection or a Map; TS makes this easy.
-        [event.field]: event.newValue
+    case "LastNameChanged":
+      // Update event: modify lastName.
+      return Option.map(state, (user) => ({
+        ...user,
+        lastName: event.newValue
       }))
   }
 }
+
+// =============================================================================
+// TS SYNTAX REFERENCE: Computed Property Names
+// =============================================================================
+//
+// Previously, we used a single `UserNameChanged` event with a `field` discriminator,
+// and applied it dynamically using computed property names:
+//
+//   return { ...user, [event.field]: event.newValue }
+//
+// TS SYNTAX: `[expression]: value` — computed property name
+// The expression in brackets is EVALUATED to get the property key.
+// If event.field is "firstName", this becomes `firstName: event.newValue`.
+//
+// NOT like Python's walrus operator `:=` (which is assignment expression).
+// This is object literal syntax: `{ [dynamicKey]: value }`
+//
+// Combined with spread: "copy user, but override the field named by event.field"
+// Scala equivalent would need reflection or a Map; TS makes this easy.
+//
+// WHY WE MOVED AWAY FROM THIS:
+// The computed property approach required storing oldValue/newValue as plain strings
+// in the event (losing the branded type information). We switched to separate
+// FirstNameChanged/LastNameChanged events for full type safety and consistency
+// with the Address aggregate (which needs separate events for email routing).
+//

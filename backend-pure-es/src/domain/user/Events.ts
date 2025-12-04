@@ -29,7 +29,7 @@ import { FirstName, LastName, UserId } from "./State.js"
 //   │    "Given the current state and a command, what events happen?"    │
 //   │    This is where business rules live. Pure function, no I/O.       │
 //   │    Example: decide(user, ChangeFirstName("Jean"))                  │
-//   │             → [UserNameChanged { field: "firstName", ... }]        │
+//   │             → [FirstNameChanged { oldValue, newValue }]            │
 //   └─────────────────────────────────────────────────────────────────────┘
 //                                ↓ events
 //   ┌─────────────────────────────────────────────────────────────────────┐
@@ -39,7 +39,7 @@ import { FirstName, LastName, UserId } from "./State.js"
 //   │    - No validation, no rejection — the event already happened      │
 //   │    - Mechanical state update, like a fold accumulator              │
 //   │    - Never fails — if event exists, it's a fact, just apply it     │
-//   │    Example: evolve(user, UserNameChanged { field: "firstName", ... })
+//   │    Example: evolve(user, FirstNameChanged { newValue: "Jean", ... })
 //   │             → { ...user, firstName: "Jean" }                       │
 //   └─────────────────────────────────────────────────────────────────────┘
 //
@@ -63,36 +63,36 @@ export const UserCreated = Schema.Struct({
 export type UserCreated = typeof UserCreated.Type
 
 // -----------------------------------------------------------------------------
-// UserNameChanged
+// FirstNameChanged
 // -----------------------------------------------------------------------------
-// Emitted when either firstName or lastName is updated.
+// Emitted when the user's first name is updated.
 //
-// Design choice: One event type with a `field` discriminator, not separate
-// `FirstNameChanged` / `LastNameChanged` events.
+// Design choice: Separate events for FirstName and LastName (not a unified
+// `UserNameChanged` with a field discriminator). This provides:
+//   - Full type safety: oldValue/newValue are properly branded, no casts needed
+//   - Consistency with Address aggregate (which needs separate events for routing)
+//   - ES purity: each distinct fact gets its own event type
 //
-// Why? Per the domain spec, name changes don't trigger emails — they're
-// treated uniformly. Separate events would add complexity without benefit.
-// (Contrast with Address, where each field triggers a *different* email.)
-//
-export const UserNameField = Schema.Literal("firstName", "lastName")
-export type UserNameField = typeof UserNameField.Type
-
-export const UserNameChanged = Schema.Struct({
-  _tag: Schema.Literal("UserNameChanged"),
+export const FirstNameChanged = Schema.Struct({
+  _tag: Schema.Literal("FirstNameChanged"),
   id: UserId,
-  // Q: What if both firstName AND lastName change at once?
-  // A: Per domain spec, single-field edits are enforced at the UI level.
-  //    If we *did* allow multi-field edits, we'd emit TWO events, not one:
-  //    [UserNameChanged{field:"firstName",...}, UserNameChanged{field:"lastName",...}]
-  //    Each fact recorded separately — that's the ES way.
-  field: UserNameField,
-  // `oldValue` and `newValue` are plain strings here, not branded.
-  // The branding ensures correct *input* at command time; in the event
-  // we just record what was observed. Reconstructing state will re-brand.
-  oldValue: Schema.String,
-  newValue: Schema.String
+  oldValue: FirstName,
+  newValue: FirstName
 })
-export type UserNameChanged = typeof UserNameChanged.Type
+export type FirstNameChanged = typeof FirstNameChanged.Type
+
+// -----------------------------------------------------------------------------
+// LastNameChanged
+// -----------------------------------------------------------------------------
+// Emitted when the user's last name is updated.
+//
+export const LastNameChanged = Schema.Struct({
+  _tag: Schema.Literal("LastNameChanged"),
+  id: UserId,
+  oldValue: LastName,
+  newValue: LastName
+})
+export type LastNameChanged = typeof LastNameChanged.Type
 
 // =============================================================================
 // UserEvent (union of all events)
@@ -106,9 +106,10 @@ export type UserNameChanged = typeof UserNameChanged.Type
 //
 // Usage in evolve:
 //   switch (event._tag) {
-//     case "UserCreated": ... // TS knows event is UserCreated here
-//     case "UserNameChanged": ... // TS knows event is UserNameChanged here
+//     case "UserCreated": ...      // TS knows event is UserCreated here
+//     case "FirstNameChanged": ... // TS knows event is FirstNameChanged here
+//     case "LastNameChanged": ...  // TS knows event is LastNameChanged here
 //   }
 //
-export const UserEvent = Schema.Union(UserCreated, UserNameChanged)
+export const UserEvent = Schema.Union(UserCreated, FirstNameChanged, LastNameChanged)
 export type UserEvent = typeof UserEvent.Type

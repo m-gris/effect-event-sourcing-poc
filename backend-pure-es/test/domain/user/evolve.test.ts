@@ -24,7 +24,7 @@ import { Option } from "effect"
 import { evolve } from "../../../src/domain/user/evolve.js"
 // TS SYNTAX: `import type` — import only the type, not the runtime value.
 // Ensures no runtime code is pulled in; purely for type-checking.
-import type { UserCreated, UserNameChanged } from "../../../src/domain/user/Events.js"
+import type { FirstNameChanged, LastNameChanged, UserCreated } from "../../../src/domain/user/Events.js"
 import type { User } from "../../../src/domain/user/State.js"
 
 // =============================================================================
@@ -90,13 +90,12 @@ describe("evolve", () => {
     })
   })
 
-  describe("UserNameChanged", () => {
-    it("UserNameChanged(firstName) on Some(User) → Some(User) with firstName updated", () => {
+  describe("FirstNameChanged", () => {
+    it("FirstNameChanged on Some(User) → Some(User) with firstName updated", () => {
       const newFirstName = "Pierre" as User["firstName"]
-      const event: UserNameChanged = {
-        _tag: "UserNameChanged",
+      const event: FirstNameChanged = {
+        _tag: "FirstNameChanged",
         id: userId,
-        field: "firstName",
         oldValue: firstName,
         newValue: newFirstName
       }
@@ -109,13 +108,14 @@ describe("evolve", () => {
         lastName // unchanged
       }))
     })
+  })
 
-    it("UserNameChanged(lastName) on Some(User) → Some(User) with lastName updated", () => {
+  describe("LastNameChanged", () => {
+    it("LastNameChanged on Some(User) → Some(User) with lastName updated", () => {
       const newLastName = "Martin" as User["lastName"]
-      const event: UserNameChanged = {
-        _tag: "UserNameChanged",
+      const event: LastNameChanged = {
+        _tag: "LastNameChanged",
         id: userId,
-        field: "lastName",
         oldValue: lastName,
         newValue: newLastName
       }

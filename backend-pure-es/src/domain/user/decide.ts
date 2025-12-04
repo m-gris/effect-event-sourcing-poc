@@ -23,9 +23,14 @@ export type UserNotFound = {
   readonly _tag: "UserNotFound"
 }
 
+// UserAlreadyExists: tried to create a user that already exists
+// CreateUser has "birth" semantics — a user can only be born once.
+export type UserAlreadyExists = {
+  readonly _tag: "UserAlreadyExists"
+}
+
 // Union of all possible errors from User aggregate
-// (Currently just one; more can be added as domain grows)
-export type UserError = UserNotFound
+export type UserError = UserNotFound | UserAlreadyExists
 
 // =============================================================================
 // decide: (State, Command) → Either<Error, Event[]>
@@ -59,10 +64,11 @@ export const decide = (
 ): Either<UserError, Array<UserEvent>> => {
   switch (command._tag) {
     case "CreateUser":
-      // IDEMPOTENCY: CreateUser means "ensure user exists".
-      // If already exists → intent satisfied → no-op (empty events, no error).
+      // BIRTH SEMANTICS: A user can only be created once.
+      // If already exists → error, not silent no-op.
+      // This makes the command's meaning unambiguous.
       if (Option.isSome(state)) {
-        return Either.right([])
+        return Either.left({ _tag: "UserAlreadyExists" as const })
       }
       return Either.right([{
         _tag: "UserCreated",
@@ -84,9 +90,8 @@ export const decide = (
             return Either.right([])
           }
           return Either.right([{
-            _tag: "UserNameChanged" as const,
+            _tag: "FirstNameChanged" as const,
             id: command.id,
-            field: "firstName" as const,
             oldValue: user.firstName,
             newValue: command.firstName
           }])
@@ -101,9 +106,8 @@ export const decide = (
             return Either.right([])
           }
           return Either.right([{
-            _tag: "UserNameChanged" as const,
+            _tag: "LastNameChanged" as const,
             id: command.id,
-            field: "lastName" as const,
             oldValue: user.lastName,
             newValue: command.lastName
           }])
