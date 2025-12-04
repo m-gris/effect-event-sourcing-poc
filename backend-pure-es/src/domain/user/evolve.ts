@@ -1,0 +1,98 @@
+// Import Option module for runtime functions (Option.some, Option.map, etc.)
+// AND import the Option TYPE separately so we can write `Option<User>` not `Option.Option<User>`
+//
+// TS SYNTAX: Two imports with same name — one for values, one for types.
+// `import { Option }` — the module/namespace (runtime, has functions)
+// `import type { Option }` — just the type (compile-time only, erased at runtime)
+// They coexist because types and values live in separate namespaces in TS.
+//
+import { Option } from "effect"
+import type { Option } from "effect/Option"
+import type { User } from "./State.js"
+import type { UserEvent } from "./Events.js"
+
+// =============================================================================
+// evolve: (State, Event) → State
+// =============================================================================
+//
+// ES PERSPECTIVE:
+// `evolve` is the "state rebuilder". Given the current state and an event,
+// it returns the new state. It's how you derive current state from event history:
+//
+//   const currentState = events.reduce(evolve, Option.none())
+//
+// This is a left fold — events are applied in order, each producing a new state.
+//
+// KEY PROPERTIES:
+//   - Pure: No I/O, no side effects — just data transformation
+//   - Total: Handles every event type (exhaustive switch)
+//   - Never fails: Events are facts that already happened; just apply them
+//   - Mechanical: No business logic, no validation — that's `decide`'s job
+//
+// FUNCTIONAL DDD:
+// `evolve` is the "fold accumulator". It doesn't decide anything; it just
+// mechanically applies facts to state. If the event says "firstName changed
+// to Jean", evolve updates firstName to Jean. No questions asked.
+//
+// WHY `Option<User>` FOR STATE?
+// Before any events, the aggregate doesn't exist. `Option.none()` represents
+// "no user yet" — explicit about absence, no nulls.
+// The first event (UserCreated) transitions from None → Some(User).
+// After that, state is always Some(User).
+//
+// EFFECT SYNTAX:
+//   `Option.none()` — absent value (like Scala's `None`)
+//   `Option.some(value)` — present value (like `Some(value)`)
+//   `Option.getOrThrow(opt)` — unwrap or throw (like `.get` — use carefully!)
+//   `Option.map`, `Option.flatMap`, `Option.match` — familiar combinators
+//
+// =============================================================================
+
+export const evolve = (state: Option<User>, event: UserEvent): Option<User> => {
+  // TS SYNTAX: `switch` on a discriminated union
+  // This is TypeScript's pattern matching equivalent. The `_tag` field acts as
+  // the discriminator (like Scala's sealed trait + case class pattern).
+  //
+  // Inside each `case`, TS "narrows" the type: it knows `event` is specifically
+  // `UserCreated`, not just `UserEvent`. You get full type safety on fields.
+  //
+  // Scala equivalent:
+  //   event match {
+  //     case UserCreated(id, firstName, lastName) => ...
+  //     case UserNameChanged(id, field, oldValue, newValue) => ...
+  //   }
+  //
+  switch (event._tag) {
+    case "UserCreated":
+      // Birth event: create the User from event data.
+      // State was None, now it's Some(User).
+      return Option.some({
+        id: event.id,
+        firstName: event.firstName,
+        lastName: event.lastName
+      })
+
+    case "UserNameChanged":
+      // Update event: modify the relevant field.
+      // We map over the Option — if state is None, this is a no-op (shouldn't happen
+      // in a well-formed event stream, but we handle it gracefully).
+      return Option.map(state, (user) => ({
+        // TS SYNTAX: `...user` — spread operator
+        // Copies all properties from `user` into this new object.
+        // Like Scala's `.copy()` but copies ALL fields, not specific ones.
+        // Similar to Python's `{**dict}` or Rust's `..struct` syntax.
+        ...user,
+
+        // TS SYNTAX: `[event.field]: value` — computed property name
+        // The expression in brackets is EVALUATED to get the property key.
+        // Here: if event.field is "firstName", this becomes `firstName: event.newValue`
+        //
+        // NOT like Python's walrus operator `:=` (which is assignment expression).
+        // This is object literal syntax: `{ [dynamicKey]: value }`
+        //
+        // Combined with spread: "copy user, but override the field named by event.field"
+        // Scala equivalent would need reflection or a Map; TS makes this easy.
+        [event.field]: event.newValue
+      }))
+  }
+}
