@@ -39,7 +39,11 @@ export default [
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2018,
-      sourceType: "module"
+      sourceType: "module",
+      // Enable typed linting for rules that need type information (like switch-exhaustiveness-check)
+      parserOptions: {
+        project: ["./tsconfig.src.json", "./tsconfig.test.json"]
+      }
     },
 
     settings: {
@@ -103,6 +107,10 @@ export default [
       "@typescript-eslint/no-array-constructor": "off",
       "@typescript-eslint/no-use-before-define": "off",
       "@typescript-eslint/no-namespace": "off",
+
+      // EXHAUSTIVENESS: Enforces all switch cases on discriminated unions are handled.
+      // Like Scala's exhaustive pattern matching on sealed traits — compiler-enforced.
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
 
       "@effect/dprint": ["error", {
         config: {
