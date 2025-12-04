@@ -1,6 +1,6 @@
 import { Either, Option } from "effect"
-import type { Either as Either } from "effect/Either"
-import type { Option as Option } from "effect/Option"
+import type { Either } from "effect/Either"
+import type { Option } from "effect/Option"
 import type { UserCommand } from "./Commands.js"
 import type { UserEvent } from "./Events.js"
 import type { User } from "./State.js"
