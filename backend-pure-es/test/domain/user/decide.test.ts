@@ -15,7 +15,7 @@
 //
 import { describe, expect, it } from "@effect/vitest"
 import { Either, Option } from "effect"
-import type { ChangeFirstName, CreateUser } from "../../../src/domain/user/Commands.js"
+import type { ChangeFirstName, ChangeLastName, CreateUser } from "../../../src/domain/user/Commands.js"
 import { decide } from "../../../src/domain/user/decide.js"
 import type { User } from "../../../src/domain/user/State.js"
 
@@ -107,6 +107,70 @@ describe("decide", () => {
       const result = decide(Option.none(), command)
 
       expect(result).toEqual(Either.left({ _tag: "UserNotFound" }))
+    })
+
+    it("ChangeFirstName with same value → Right([]) (no-op)", () => {
+      // NO-OP: If value doesn't change, no event to record.
+      // The desired state is already true — nothing happened.
+      const existingUser: User = { id: userId, firstName, lastName }
+      const command: ChangeFirstName = {
+        _tag: "ChangeFirstName",
+        id: userId,
+        firstName  // same as current
+      }
+
+      const result = decide(Option.some(existingUser), command)
+
+      expect(result).toEqual(Either.right([]))
+    })
+  })
+
+  describe("ChangeLastName", () => {
+
+    it("ChangeLastName on Some(User) → Right([UserNameChanged])", () => {
+      const existingUser: User = { id: userId, firstName, lastName }
+      const newLastName = "Martin" as User["lastName"]
+      const command: ChangeLastName = {
+        _tag: "ChangeLastName",
+        id: userId,
+        lastName: newLastName
+      }
+
+      const result = decide(Option.some(existingUser), command)
+
+      expect(result).toEqual(Either.right([{
+        _tag: "UserNameChanged",
+        id: userId,
+        field: "lastName",
+        oldValue: lastName,
+        newValue: newLastName
+      }]))
+    })
+
+    it("ChangeLastName on None → Left(UserNotFound)", () => {
+      const newLastName = "Martin" as User["lastName"]
+      const command: ChangeLastName = {
+        _tag: "ChangeLastName",
+        id: userId,
+        lastName: newLastName
+      }
+
+      const result = decide(Option.none(), command)
+
+      expect(result).toEqual(Either.left({ _tag: "UserNotFound" }))
+    })
+
+    it("ChangeLastName with same value → Right([]) (no-op)", () => {
+      const existingUser: User = { id: userId, firstName, lastName }
+      const command: ChangeLastName = {
+        _tag: "ChangeLastName",
+        id: userId,
+        lastName  // same as current
+      }
+
+      const result = decide(Option.some(existingUser), command)
+
+      expect(result).toEqual(Either.right([]))
     })
   })
 })

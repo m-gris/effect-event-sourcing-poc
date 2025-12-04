@@ -78,18 +78,36 @@ export const decide = (
         // Like Scala's `option match { case None => ... case Some(v) => ... }`
         // ERRORS AS VALUES: return Left(error), not throw, not null
         onNone: () => Either.left({ _tag: "UserNotFound" as const }),
-        onSome: (user) =>
-          Either.right([{
+        onSome: (user) => {
+          // NO-OP: if value unchanged, nothing to record
+          if (user.firstName === command.firstName) {
+            return Either.right([])
+          }
+          return Either.right([{
             _tag: "UserNameChanged" as const,
             id: command.id,
             field: "firstName" as const,
             oldValue: user.firstName,
             newValue: command.firstName
           }])
+        }
       })
 
     case "ChangeLastName":
-      // TODO: implement in later tests
-      return Either.right([])
+      return Option.match(state, {
+        onNone: () => Either.left({ _tag: "UserNotFound" as const }),
+        onSome: (user) => {
+          if (user.lastName === command.lastName) {
+            return Either.right([])
+          }
+          return Either.right([{
+            _tag: "UserNameChanged" as const,
+            id: command.id,
+            field: "lastName" as const,
+            oldValue: user.lastName,
+            newValue: command.lastName
+          }])
+        }
+      })
   }
 }
