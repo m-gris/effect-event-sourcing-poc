@@ -6,25 +6,34 @@ This document captures implementation approach decisions for the Event Triggers 
 
 ---
 
-## Three-Branch Strategy
+## Three-Directory Strategy
 
-The PoC will demonstrate **three contrasting approaches** to the same problem, each in its own git worktree/branch:
+The PoC demonstrates **three contrasting approaches** to the same problem, each in its own directory:
 
-### Branch A: Pure Relational DB Approach
+```
+/
+├── docs/                    # Specifications and decisions
+├── backend-pure-es/         # Pure Event Sourcing approach
+├── backend-hybrid/          # Hybrid approach (TBD)
+├── backend-pure-rdbms/      # Pure RDBMS approach (TBD)
+└── frontend/                # Shared React frontend (TBD)
+```
+
+### Pure Relational DB Approach (`backend-pure-rdbms/`)
 
 - **Storage**: Traditional relational database with CRUD operations
 - **Event detection**: Application-layer — the API knows which field is being changed
 - **Revert mechanism**: Store old value at change time (e.g., in a `change_history` table); revert = UPDATE with stored value
 - **Philosophy**: Event-driven *behavior* without event-sourced *storage*
 
-### Branch B: Pure Event Sourcing Approach
+### Pure Event Sourcing Approach (`backend-pure-es/`)
 
 - **Storage**: Events as the source of truth (append-only event log)
 - **State derivation**: Current state rebuilt/projected from event history
 - **Revert mechanism**: Old value recovered from event history; revert = new event (e.g., `AddressFieldReverted`)
 - **Philosophy**: Full event sourcing — state is a fold over events
 
-### Branch C: Hybrid Approach
+### Hybrid Approach (`backend-hybrid/`)
 
 - **Storage**: RDBMS for current state + events table for change history
 - **State derivation**: Current state read from relational tables; change events logged separately
@@ -46,22 +55,22 @@ Implementing three approaches allows:
 **Sequential, not parallel.**
 
 ```
-B (Pure ES)  →  C (Hybrid)  →  A (Pure RDBMS)
+Pure ES  →  Hybrid  →  Pure RDBMS
 ```
 
 ### Why this order?
 
 | Order | Rationale |
 |-------|-----------|
-| **B first** | Learn the event sourcing paradigm in its purest form, no RDBMS mental baggage |
-| **C second** | See how to bridge event sourcing with existing relational infrastructure |
-| **A third** | Contrast — understand what pure RDBMS gains (simplicity) and loses (workflow clarity) |
+| **Pure ES first** | Learn the event sourcing paradigm in its purest form, no RDBMS mental baggage |
+| **Hybrid second** | See how to bridge event sourcing with existing relational infrastructure |
+| **Pure RDBMS third** | Contrast — understand what pure RDBMS gains (simplicity) and loses (workflow clarity) |
 
 ### Why sequential?
 
-- **Learning > speed**: Understanding the patterns matters more than delivering three branches fast
+- **Learning > speed**: Understanding the patterns matters more than delivering all three fast
 - **Cognitive load**: Reviewing and reasoning about three divergent approaches simultaneously risks confusion
-- **Conceptual build-up**: Each branch informs the understanding of the next
+- **Conceptual build-up**: Each approach informs the understanding of the next
 
 ---
 
@@ -73,17 +82,17 @@ B (Pure ES)  →  C (Hybrid)  →  A (Pure RDBMS)
 | **Backend** | TypeScript (Node.js) |
 | **Frontend** | React |
 | **Infrastructure** | docker-compose (for DB) |
-| **DB Access** | @effect/sql + @effect/sql-pg / Prisma (see per-branch details below) |
+| **DB Access** | @effect/sql + @effect/sql-pg / Prisma (see per-directory details below) |
 
-### Stack by Branch
+### Stack by Directory
 
-| Branch | Backend Framework | DB Access | Rationale |
-|--------|-------------------|-----------|-----------|
-| **B (Pure ES)** | **Effect** | **@effect/sql-pg** | Native Effect integration, typed queries, stays in ecosystem |
-| **C (Hybrid)** | **Effect** | **Prisma + @effect/sql-pg** | Prisma for RDBMS tables, @effect/sql-pg for events table |
-| **A (Pure RDBMS)** | **Effect** | **Prisma** | Classic CRUD — Prisma's sweet spot |
+| Directory | Backend Framework | DB Access | Rationale |
+|-----------|-------------------|-----------|-----------|
+| **backend-pure-es/** | **Effect** | **@effect/sql-pg** | Native Effect integration, typed queries, stays in ecosystem |
+| **backend-hybrid/** | **Effect** | **Prisma + @effect/sql-pg** | Prisma for RDBMS tables, @effect/sql-pg for events table |
+| **backend-pure-rdbms/** | **Effect** | **Prisma** | Classic CRUD — Prisma's sweet spot |
 
-### Why Effect for All Branches?
+### Why Effect for All Directories?
 
 Effect is **ZIO for TypeScript** — typed errors, dependency injection, resource management, structured concurrency.
 
@@ -94,9 +103,9 @@ Effect is **ZIO for TypeScript** — typed errors, dependency injection, resourc
 | Side effects (send email) explicit | Effect tracks side effects in types |
 | Error handling | Typed errors, not thrown exceptions |
 
-Using Effect across all branches:
+Using Effect across all directories:
 - **Consistency**: Same mental model, same patterns — only the storage strategy differs
-- **Fair comparison**: Differences between branches are purely about data modeling, not framework noise
+- **Fair comparison**: Differences between directories are purely about data modeling, not framework noise
 - **Learning**: Master one framework deeply rather than three shallowly
 
 ### Why @effect/sql-pg?
@@ -125,7 +134,7 @@ This approach:
 ### Notes
 
 - **docker-compose**: PostgreSQL only; app runs locally (not containerized)
-- **Shared frontend**: One React app serves all branches (backend swap only)
+- **Shared frontend**: One React app serves all backend directories
 
 ---
 
@@ -373,10 +382,10 @@ This order ensures:
 | Decision | Resolution |
 |----------|------------|
 | Database | PostgreSQL |
-| Backend framework | Effect (all branches) |
-| DB access | @effect/sql-pg (Branch B), Prisma + @effect/sql-pg (Branch C), Prisma (Branch A) |
-| Frontend | React (shared across branches) |
-| Worktree structure | Shared frontend; backend swapped per branch |
+| Backend framework | Effect (all directories) |
+| DB access | @effect/sql-pg (Pure ES), Prisma + @effect/sql-pg (Hybrid), Prisma (Pure RDBMS) |
+| Frontend | React (shared across all backends) |
+| Directory structure | Multi-directory (not multi-branch); shared frontend |
 
 ---
 
