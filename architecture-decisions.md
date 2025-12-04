@@ -73,14 +73,14 @@ B (Pure ES)  →  C (Hybrid)  →  A (Pure RDBMS)
 | **Backend** | TypeScript (Node.js) |
 | **Frontend** | React |
 | **Infrastructure** | docker-compose (for DB) |
-| **DB Access** | Kysely / Prisma (see per-branch details below) |
+| **DB Access** | @effect/sql + @effect/sql-pg / Prisma (see per-branch details below) |
 
 ### Stack by Branch
 
 | Branch | Backend Framework | DB Access | Rationale |
 |--------|-------------------|-----------|-----------|
-| **B (Pure ES)** | **Effect** | **Kysely** | FP-native, typed effects, raw SQL fits event sourcing |
-| **C (Hybrid)** | **Effect** | **Prisma + Kysely** | Prisma for RDBMS tables, Kysely for events table |
+| **B (Pure ES)** | **Effect** | **@effect/sql-pg** | Native Effect integration, typed queries, stays in ecosystem |
+| **C (Hybrid)** | **Effect** | **Prisma + @effect/sql-pg** | Prisma for RDBMS tables, @effect/sql-pg for events table |
 | **A (Pure RDBMS)** | **Effect** | **Prisma** | Classic CRUD — Prisma's sweet spot |
 
 ### Why Effect for All Branches?
@@ -99,12 +99,28 @@ Using Effect across all branches:
 - **Fair comparison**: Differences between branches are purely about data modeling, not framework noise
 - **Learning**: Master one framework deeply rather than three shallowly
 
-### Why Kysely?
+### Why @effect/sql-pg?
 
-Kysely is a type-safe SQL query builder (similar to Doobie in Scala). It provides:
-- Full TypeScript type inference for queries
-- No magic — you write SQL, but with type safety
-- Works well with both event tables and relational tables
+`@effect/sql-pg` is Effect's first-party PostgreSQL adapter (wraps postgres.js). It provides:
+- Native Effect integration — queries return `Effect<A, SqlError, SqlClient>`
+- Typed errors, resource management, and observability built-in
+- Connection pooling, retry logic, LISTEN/NOTIFY support
+- Stays fully within the Effect ecosystem — one mental model, no context-switching
+
+### Implementation Strategy: In-Memory First
+
+Development starts with an **in-memory EventStore**, with PostgreSQL added later as a Layer swap:
+
+1. **Define the `EventStore` service interface first** — `appendEvents`, `readStream`, etc.
+2. **Implement `InMemoryEventStore`** — fast feedback, no infrastructure
+3. **Wire via Effect Layers** — domain code depends on the interface, not the implementation
+4. **Add `PostgresEventStore` later** — swap Layer, domain code unchanged
+
+This approach:
+- Forces proper interface/implementation separation from day one
+- Validates the Layer pattern before adding database complexity
+- Keeps tests fast (no DB required for domain logic)
+- Proves the architecture: if it works with in-memory, Postgres is just plumbing
 
 ### Notes
 
@@ -358,7 +374,7 @@ This order ensures:
 |----------|------------|
 | Database | PostgreSQL |
 | Backend framework | Effect (all branches) |
-| DB access | Kysely (Branch B), Prisma + Kysely (Branch C), Prisma (Branch A) |
+| DB access | @effect/sql-pg (Branch B), Prisma + @effect/sql-pg (Branch C), Prisma (Branch A) |
 | Frontend | React (shared across branches) |
 | Worktree structure | Shared frontend; backend swapped per branch |
 

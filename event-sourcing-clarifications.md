@@ -49,7 +49,7 @@ The danger for RDBMS-biased teams: the familiar escape hatches (indexes, denorma
 | Migrations | Awkward — events evolve via versioning, not schema changes |
 
 **Better alternatives**:
-- Raw SQL / query builder (pg driver, Kysely, Knex)
+- Raw SQL / query builder (pg driver, @effect/sql-pg, Kysely, Knex)
 - Dedicated event store library (e.g., Emmett for Node.js)
 - Thin custom wrapper: `appendEvent()`, `readStream()`, `readAll()`
 
