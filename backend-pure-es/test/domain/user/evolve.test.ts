@@ -19,13 +19,13 @@
 // For pure functions like `evolve`, it's just standard vitest — describe/it/expect.
 // Effect-specific test helpers (like `it.effect`) are for testing effectful code.
 //
-import { Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import { Option } from "effect"
 import { evolve } from "../../../src/domain/user/evolve.js"
 // TS SYNTAX: `import type` — import only the type, not the runtime value.
 // Ensures no runtime code is pulled in; purely for type-checking.
-import type { User } from "../../../src/domain/user/State.js"
 import type { UserCreated, UserNameChanged } from "../../../src/domain/user/Events.js"
+import type { User } from "../../../src/domain/user/State.js"
 
 // =============================================================================
 // Test Fixtures
@@ -71,9 +71,7 @@ const existingUser: User = {
 //
 
 describe("evolve", () => {
-
   describe("UserCreated", () => {
-
     it("UserCreated on None → Some(User) with id, firstName, lastName", () => {
       const event: UserCreated = {
         _tag: "UserCreated",
@@ -90,11 +88,9 @@ describe("evolve", () => {
         lastName
       }))
     })
-
   })
 
   describe("UserNameChanged", () => {
-
     it("UserNameChanged(firstName) on Some(User) → Some(User) with firstName updated", () => {
       const newFirstName = "Pierre" as User["firstName"]
       const event: UserNameChanged = {
@@ -110,7 +106,7 @@ describe("evolve", () => {
       expect(result).toEqual(Option.some({
         id: userId,
         firstName: newFirstName,
-        lastName   // unchanged
+        lastName // unchanged
       }))
     })
 
@@ -128,11 +124,9 @@ describe("evolve", () => {
 
       expect(result).toEqual(Option.some({
         id: userId,
-        firstName,  // unchanged
+        firstName, // unchanged
         lastName: newLastName
       }))
     })
-
   })
-
 })

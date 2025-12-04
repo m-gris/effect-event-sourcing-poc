@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { UserId, FirstName, LastName } from "./State.js"
+import { FirstName, LastName, UserId } from "./State.js"
 
 // =============================================================================
 // User Events
@@ -55,8 +55,8 @@ import { UserId, FirstName, LastName } from "./State.js"
 // This is the "birth event" — every User stream starts with this.
 //
 export const UserCreated = Schema.Struct({
-  _tag: Schema.Literal("UserCreated"),   //     ↳ Literal: A schema that only accepts the exact string "UserCreated".
-  id: UserId,                           //       Used as a discriminator/tag for union types (like sealed trait + case class).
+  _tag: Schema.Literal("UserCreated"), //     ↳ Literal: A schema that only accepts the exact string "UserCreated".
+  id: UserId, //       Used as a discriminator/tag for union types (like sealed trait + case class).
   firstName: FirstName,
   lastName: LastName
 })

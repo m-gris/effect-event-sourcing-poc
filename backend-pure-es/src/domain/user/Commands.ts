@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { UserId, FirstName, LastName } from "./State.js"
+import { FirstName, LastName, UserId } from "./State.js"
 
 // =============================================================================
 // User Commands
@@ -68,7 +68,7 @@ export type CreateUser = typeof CreateUser.Type
 export const ChangeFirstName = Schema.Struct({
   _tag: Schema.Literal("ChangeFirstName"),
   id: UserId,
-  firstName: FirstName   // The new desired value
+  firstName: FirstName // The new desired value
 })
 export type ChangeFirstName = typeof ChangeFirstName.Type
 

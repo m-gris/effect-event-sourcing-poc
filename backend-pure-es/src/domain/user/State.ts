@@ -43,24 +43,24 @@ import { Schema } from "effect"
 // Why branded? Without branding, UserId and AddressId would both be `string`,
 // and the compiler couldn't catch `getUser(addressId)` mistakes.
 // With branding, they're distinct types — type safety without runtime cost.
-export const UserId = Schema.String         // Base string schema (like scala's circe's Codec[String])
-  .pipe(                                    // .pipe = composition, like F#'s |> operator
-    Schema.brand("UserId")                  // Adds compile-time tag: string & Brand<"UserId">
-  )                                         // Runtime: still a string. Compile-time: distinct type.
+export const UserId = Schema.String // Base string schema (like scala's circe's Codec[String])
+  .pipe( // .pipe = composition, like F#'s |> operator
+    Schema.brand("UserId") // Adds compile-time tag: string & Brand<"UserId">
+  ) // Runtime: still a string. Compile-time: distinct type.
 // NOTE: Why .pipe()? TS lacks extension methods. In Scala you'd chain (str.brand("X")),
 // but TS can't add methods to existing types. .pipe() is Effect's universal workaround,
 // used across Schema, Effect, Stream, etc.
 
-export type UserId = typeof UserId.Type     // Every Schema has .Type — extracts the TS type
+export type UserId = typeof UserId.Type // Every Schema has .Type — extracts the TS type
 
 // NonEmptyString: a string that cannot be empty.
 //
 // DDD: This is a reusable constraint — "non-emptiness" is a domain rule
 // that applies to multiple fields (firstName, lastName, label, etc.).
 export const NonEmptyString = Schema.String.pipe(
-  Schema.filter(                            // Adds runtime validation (like `refined` in Scala)
-    (s) => s.trim().length > 0,             // Predicate: true = valid, false = error
-    { message: () => "String must not be empty" }  // Error is a value, not a thrown exception
+  Schema.filter( // Adds runtime validation (like `refined` in Scala)
+    (s) => s.trim().length > 0, // Predicate: true = valid, false = error
+    { message: () => "String must not be empty" } // Error is a value, not a thrown exception
   )
 )
 
@@ -107,11 +107,11 @@ export type LastName = typeof LastName.Type
 //
 // =============================================================================
 
-export const User = Schema.Struct({         // Defines object schema — like a Scala case class
-  id: UserId,                               // Each field is itself a schema
-  firstName: FirstName,                     // Validation is recursive: any field fails = struct fails
+export const User = Schema.Struct({ // Defines object schema — like a Scala case class
+  id: UserId, // Each field is itself a schema
+  firstName: FirstName, // Validation is recursive: any field fails = struct fails
   lastName: LastName
 })
 
 // Schema defines both runtime validator AND static type
-export type User = typeof User.Type         // Extracts: { id: UserId, firstName: FirstName, lastName: LastName }
+export type User = typeof User.Type // Extracts: { id: UserId, firstName: FirstName, lastName: LastName }

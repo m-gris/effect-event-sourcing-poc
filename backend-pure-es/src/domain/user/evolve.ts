@@ -8,8 +8,8 @@
 //
 import { Option } from "effect"
 import type { Option } from "effect/Option"
-import type { User } from "./State.js"
 import type { UserEvent } from "./Events.js"
+import type { User } from "./State.js"
 
 // =============================================================================
 // evolve: (State, Event) → State
