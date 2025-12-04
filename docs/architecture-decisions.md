@@ -182,7 +182,7 @@ Effect is the closest TypeScript gets to F#/Scala expressiveness for functional 
 For each aggregate, we define:
 
 1. **Types** — immutable data structures (state, commands, events, value objects)
-2. **`decide` function** — `(State, Command) → Effect<Event[], Error>` (what happens)
+2. **`decide` function** — `(State, Command) → Either<Error, Event[]>` (what happens)
 3. **`evolve` function** — `(State, Event) → State` (how state changes)
 
 Side effects (persist event, send email) happen *after* the pure domain logic, in the Effect runtime.
@@ -264,7 +264,7 @@ A standard ES + FP recipe: pure domain logic at the center, effects at the edges
 | Component | Signature | Testability |
 |-----------|-----------|-------------|
 | Domain types | Commands, Events, State, Value Objects | Compiler-checked |
-| `decide` | `(State, Command) → Event[]` | Plain unit tests |
+| `decide` | `(State, Command) → Either<Error, Event[]>` | Plain unit tests |
 | `evolve` | `(State, Event) → State` | Plain unit tests |
 
 **Effectful (returns `Effect<A, E, R>`):**
