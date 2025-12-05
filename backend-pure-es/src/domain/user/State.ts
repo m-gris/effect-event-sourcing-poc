@@ -112,6 +112,13 @@ export const User = Schema.Struct({ // Defines object schema — like a Scala ca
   firstName: FirstName, // Validation is recursive: any field fails = struct fails
   lastName: LastName
 })
+// WHY ISN'T ADDRESS NESTED IN USER?
+// Aggregate boundaries are about consistency, not ownership.
+// "Does User have addresses?" — yes, conceptually.
+// "Must they be consistent in a single transaction?" — no.
+// Changing an address doesn't require updating User; they're independent.
+// See Address/State.ts for more on this design choice.
+//
 
 // Schema defines both runtime validator AND static type
 export type User = typeof User.Type // Extracts: { id: UserId, firstName: FirstName, lastName: LastName }
