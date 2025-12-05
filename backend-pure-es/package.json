@@ -19,6 +19,8 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@effect/platform": "^0.93.6",
+    "@effect/platform-node": "^0.103.0",
     "effect": "^3.17.7"
   },
   "devDependencies": {
