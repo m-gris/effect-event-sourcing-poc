@@ -24,6 +24,7 @@ import type { User } from "../../../src/domain/user/State.js"
 // =============================================================================
 
 const userId = "user-123" as User["id"]
+const email = "jean@example.com" as User["email"]
 const firstName = "Jean" as User["firstName"]
 const lastName = "Dupont" as User["lastName"]
 
@@ -37,6 +38,7 @@ describe("decide", () => {
       const command: CreateUser = {
         _tag: "CreateUser",
         id: userId,
+        email,
         firstName,
         lastName
       }
@@ -47,6 +49,7 @@ describe("decide", () => {
       expect(result).toEqual(Either.right([{
         _tag: "UserCreated",
         id: userId,
+        email,
         firstName,
         lastName
       }]))
@@ -57,10 +60,11 @@ describe("decide", () => {
       // CreateUser means "birth a new user" — can only happen once.
       // If user already exists, it's an error, not a silent no-op.
       // This makes the command's meaning unambiguous.
-      const existingUser: User = { id: userId, firstName, lastName }
+      const existingUser: User = { id: userId, email, firstName, lastName }
       const command: CreateUser = {
         _tag: "CreateUser",
         id: userId,
+        email,
         firstName,
         lastName
       }
@@ -73,7 +77,7 @@ describe("decide", () => {
 
   describe("ChangeFirstName", () => {
     it("ChangeFirstName on Some(User) → Right([FirstNameChanged])", () => {
-      const existingUser: User = { id: userId, firstName, lastName }
+      const existingUser: User = { id: userId, email, firstName, lastName }
       const newFirstName = "Pierre" as User["firstName"]
       const command: ChangeFirstName = {
         _tag: "ChangeFirstName",
@@ -111,7 +115,7 @@ describe("decide", () => {
     it("ChangeFirstName with same value → Right([]) (no-op)", () => {
       // NO-OP: If value doesn't change, no event to record.
       // The desired state is already true — nothing happened.
-      const existingUser: User = { id: userId, firstName, lastName }
+      const existingUser: User = { id: userId, email, firstName, lastName }
       const command: ChangeFirstName = {
         _tag: "ChangeFirstName",
         id: userId,
@@ -126,7 +130,7 @@ describe("decide", () => {
 
   describe("ChangeLastName", () => {
     it("ChangeLastName on Some(User) → Right([LastNameChanged])", () => {
-      const existingUser: User = { id: userId, firstName, lastName }
+      const existingUser: User = { id: userId, email, firstName, lastName }
       const newLastName = "Martin" as User["lastName"]
       const command: ChangeLastName = {
         _tag: "ChangeLastName",
@@ -158,7 +162,7 @@ describe("decide", () => {
     })
 
     it("ChangeLastName with same value → Right([]) (no-op)", () => {
-      const existingUser: User = { id: userId, firstName, lastName }
+      const existingUser: User = { id: userId, email, firstName, lastName }
       const command: ChangeLastName = {
         _tag: "ChangeLastName",
         id: userId,

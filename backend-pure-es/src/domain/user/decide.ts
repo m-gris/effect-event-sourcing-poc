@@ -95,6 +95,7 @@ export const decide = (
       return Either.right([{
         _tag: "UserCreated" as const,
         id: cmd.id,
+        email: cmd.email,
         firstName: cmd.firstName,
         lastName: cmd.lastName
       }])

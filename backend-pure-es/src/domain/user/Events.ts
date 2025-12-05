@@ -1,4 +1,5 @@
 import { Schema } from "effect"
+import { Email } from "../../shared/Email.js"
 import { FirstName, LastName, UserId } from "./State.js"
 
 // =============================================================================
@@ -57,6 +58,7 @@ import { FirstName, LastName, UserId } from "./State.js"
 export const UserCreated = Schema.Struct({
   _tag: Schema.Literal("UserCreated"), //     ↳ Literal: A schema that only accepts the exact string "UserCreated".
   id: UserId, //       Used as a discriminator/tag for union types (like sealed trait + case class).
+  email: Email.schema, //  User's email — used for safety notifications
   firstName: FirstName,
   lastName: LastName
 })

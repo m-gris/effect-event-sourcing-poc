@@ -67,6 +67,7 @@ export const evolve = (state: Option<User>, event: UserEvent): Option<User> =>
     Match.tag("UserCreated", (e) =>
       Option.some({
         id: e.id,
+        email: e.email,
         firstName: e.firstName,
         lastName: e.lastName
       })),

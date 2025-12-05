@@ -47,11 +47,13 @@ import type { User } from "../../../src/domain/user/State.js"
 // `User["id"]` is TS syntax for "the type of the `id` field of User" — lookup type.
 //
 const userId = "user-123" as User["id"]
+const email = "jean@example.com" as User["email"]
 const firstName = "Jean" as User["firstName"]
 const lastName = "Dupont" as User["lastName"]
 
 const existingUser: User = {
   id: userId,
+  email,
   firstName,
   lastName
 }
@@ -76,6 +78,7 @@ describe("evolve", () => {
       const event: UserCreated = {
         _tag: "UserCreated",
         id: userId,
+        email,
         firstName,
         lastName
       }
@@ -84,6 +87,7 @@ describe("evolve", () => {
 
       expect(result).toEqual(Option.some({
         id: userId,
+        email,
         firstName,
         lastName
       }))
@@ -104,6 +108,7 @@ describe("evolve", () => {
 
       expect(result).toEqual(Option.some({
         id: userId,
+        email,
         firstName: newFirstName,
         lastName // unchanged
       }))
@@ -124,6 +129,7 @@ describe("evolve", () => {
 
       expect(result).toEqual(Option.some({
         id: userId,
+        email,
         firstName, // unchanged
         lastName: newLastName
       }))

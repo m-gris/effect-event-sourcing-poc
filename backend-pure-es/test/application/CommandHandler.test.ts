@@ -34,6 +34,7 @@ import { evolve } from "../../src/domain/user/evolve.js"
 // =============================================================================
 
 const userId = "user-123" as User["id"]
+const email = "jean@example.com" as User["email"]
 const firstName = "Jean" as User["firstName"]
 const lastName = "Dupont" as User["lastName"]
 
@@ -59,6 +60,7 @@ describe("makeCommandHandler", () => {
           const command: CreateUser = {
             _tag: "CreateUser",
             id: userId,
+            email,
             firstName,
             lastName
           }
@@ -70,6 +72,7 @@ describe("makeCommandHandler", () => {
           expect(events).toEqual([{
             _tag: "UserCreated",
             id: userId,
+            email,
             firstName,
             lastName
           }])
@@ -89,6 +92,7 @@ describe("makeCommandHandler", () => {
           const command: CreateUser = {
             _tag: "CreateUser",
             id: userId,
+            email,
             firstName,
             lastName
           }
@@ -98,6 +102,7 @@ describe("makeCommandHandler", () => {
           const existingEvent: UserEvent = {
             _tag: "UserCreated",
             id: userId,
+            email,
             firstName,
             lastName
           }
@@ -131,6 +136,7 @@ describe("makeCommandHandler", () => {
           const existingEvent: UserEvent = {
             _tag: "UserCreated",
             id: userId,
+            email,
             firstName,
             lastName
           }
@@ -197,6 +203,7 @@ describe("makeCommandHandler", () => {
           const existingEvent: UserEvent = {
             _tag: "UserCreated",
             id: userId,
+            email,
             firstName,
             lastName
           }

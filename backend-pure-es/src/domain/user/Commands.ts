@@ -1,4 +1,5 @@
 import { Schema } from "effect"
+import { Email } from "../../shared/Email.js"
 import { FirstName, LastName, UserId } from "./State.js"
 
 // =============================================================================
@@ -52,6 +53,7 @@ import { FirstName, LastName, UserId } from "./State.js"
 export const CreateUser = Schema.Struct({
   _tag: Schema.Literal("CreateUser"),
   id: UserId,
+  email: Email.schema,
   firstName: FirstName,
   lastName: LastName
 })

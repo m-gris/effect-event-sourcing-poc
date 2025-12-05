@@ -2,6 +2,10 @@
 // `Schema` is the module for defining types with runtime validation.
 // Other common imports: `Effect` (the core monad), `Context` (DI), `Layer` (wiring).
 import { Schema } from "effect"
+import { Email } from "../../shared/Email.js"
+
+// Re-export Email for convenience — consumers of User can get it here
+export { Email } from "../../shared/Email.js"
 
 // =============================================================================
 // Value Objects (branded types)
@@ -109,6 +113,7 @@ export type LastName = typeof LastName.Type
 
 export const User = Schema.Struct({ // Defines object schema — like a Scala case class
   id: UserId, // Each field is itself a schema
+  email: Email.schema, // User's email — used for sending safety notifications
   firstName: FirstName, // Validation is recursive: any field fails = struct fails
   lastName: LastName
 })
