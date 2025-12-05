@@ -31,7 +31,35 @@
 //   - Layer ≈ ZLayer — describes how to build a service from dependencies
 //   - Effect<A, E, R> ≈ ZIO[R, E, A] — R is the "environment" (required services)
 //
-import { Context, Effect } from "effect"
+import type { Effect } from "effect"
+import { Context } from "effect"
+
+// =============================================================================
+// Concrete Tags for Each Aggregate
+// =============================================================================
+//
+// WHY SEPARATE TAGS?
+// Effect's Context.Tag requires a concrete type at the Tag level.
+// We can't have a single Tag<EventStore<E>> that works for all E.
+// So we create one Tag per aggregate type.
+//
+// This is actually good DDD practice — each aggregate has its own event store
+// (conceptually, even if backed by the same database table).
+//
+// EFFECT SYNTAX: Context.GenericTag<Identifier, ServiceType>
+//   - Identifier: string key for the service (for debugging/logging)
+//   - ServiceType: the interface this tag provides
+//
+// Usage:
+//   Effect.flatMap(UserEventStore, store => store.load(streamId))
+//   // or in generators:
+//   const store = yield* UserEventStore
+//   const events = yield* store.load(streamId)
+//
+
+// Import event types (we'll need these for the concrete tags)
+import type { AddressEvent } from "./domain/address/Events.js"
+import type { UserEvent } from "./domain/user/Events.js"
 
 // =============================================================================
 // Stream ID (Value Object)
@@ -131,33 +159,6 @@ export interface EventStoreService<E> {
     events: ReadonlyArray<E>
   ) => Effect.Effect<void, never>
 }
-
-// =============================================================================
-// Concrete Tags for Each Aggregate
-// =============================================================================
-//
-// WHY SEPARATE TAGS?
-// Effect's Context.Tag requires a concrete type at the Tag level.
-// We can't have a single Tag<EventStore<E>> that works for all E.
-// So we create one Tag per aggregate type.
-//
-// This is actually good DDD practice — each aggregate has its own event store
-// (conceptually, even if backed by the same database table).
-//
-// EFFECT SYNTAX: Context.GenericTag<Identifier, ServiceType>
-//   - Identifier: string key for the service (for debugging/logging)
-//   - ServiceType: the interface this tag provides
-//
-// Usage:
-//   Effect.flatMap(UserEventStore, store => store.load(streamId))
-//   // or in generators:
-//   const store = yield* UserEventStore
-//   const events = yield* store.load(streamId)
-//
-
-// Import event types (we'll need these for the concrete tags)
-import type { UserEvent } from "./domain/user/Events.js"
-import type { AddressEvent } from "./domain/address/Events.js"
 
 // Tag for User aggregate's event store
 export class UserEventStore extends Context.Tag("UserEventStore")<

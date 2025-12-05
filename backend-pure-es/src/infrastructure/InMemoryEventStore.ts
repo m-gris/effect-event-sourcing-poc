@@ -89,39 +89,93 @@ export const makeInMemoryEventStore = <E>(): EventStoreService<E> => {
 // Layers: For Effect Dependency Injection
 // =============================================================================
 //
-// EFFECT LAYER PATTERN:
-// A Layer describes how to build a service. It's used at the "edge of the world"
-// (main, tests) to wire up dependencies.
+// WHAT IS A LAYER?
+// A Layer describes HOW to build a service from its dependencies.
+// It's the "wiring" that connects interfaces (Tags) to implementations.
 //
-// Layer.succeed: Creates a Layer from a synchronously-built service.
-// No dependencies needed — just create the in-memory store.
+// SCALA ANALOGY:
+//   Layer ≈ ZLayer in ZIO
+//   Layer<ROut, E, RIn> ≈ ZLayer[RIn, E, ROut]
+//     - ROut: what this layer PROVIDES (the service)
+//     - E: errors that can occur during construction
+//     - RIn: what this layer REQUIRES (dependencies)
 //
-// USAGE:
+// LAYER CONSTRUCTION VARIANTS:
+//
+//   Layer.succeed(Tag, service)
+//     - Creates layer from an ALREADY-BUILT service instance
+//     - The service is evaluated ONCE at layer definition time
+//     - ⚠️ PROBLEM: Shared mutable state across all uses!
+//
+//   Layer.sync(Tag, () => service)
+//     - Creates layer from a FACTORY function
+//     - The factory is called EACH TIME the layer is used
+//     - ✅ Each use gets a FRESH instance — perfect for tests!
+//
+//   Layer.effect(Tag, Effect)
+//     - Creates layer from an effectful computation
+//     - For when construction needs async/IO (e.g., DB connection)
+//
+// WHY Layer.sync AND NOT Layer.succeed?
+// We initially used Layer.succeed, but tests were SHARING state!
+// Test 1 appends events, Test 2 sees them — not isolated.
+// Layer.sync ensures each test (each Effect.provide) gets its own store.
+//
+// USAGE (Effect.provide):
+//
+//   // Define a program that REQUIRES UserEventStore
 //   const program = Effect.gen(function* () {
-//     const store = yield* UserEventStore
+//     const store = yield* UserEventStore  // "I need this service"
 //     const events = yield* store.load(streamId)
-//     ...
+//     return events
 //   })
+//   // program has type: Effect<Event[], never, UserEventStore>
+//   //                                         ^^^^^^^^^^^^^^ requirement!
 //
-//   // Wire up with in-memory implementation
-//   const runnable = program.pipe(Effect.provide(InMemoryUserEventStore))
+//   // PROVIDE the implementation via Layer
+//   const runnable = program.pipe(
+//     Effect.provide(InMemoryUserEventStore)
+//   )
+//   // runnable has type: Effect<Event[], never, never>
+//   //                                          ^^^^^ no more requirements!
+//
+//   // Now we can run it
 //   Effect.runPromise(runnable)
 //
+// SCALA ANALOGY:
+//   program.provide(InMemoryUserEventStore) ≈
+//   program.provideLayer(InMemoryUserEventStore)
+//
+// THE "EDGE OF THE WORLD":
+// Layers are composed and provided at the entry point (main, test setup).
+// The core code just declares requirements; it doesn't know the implementation.
+// This is Dependency Injection done right — compile-time checked, no reflection.
+//
 
-// Layer that provides UserEventStore with in-memory implementation
-// Using Layer.sync so each use creates a FRESH store (important for test isolation)
+// -----------------------------------------------------------------------------
+// Layer.sync: Fresh instance per use
+// -----------------------------------------------------------------------------
+// Each time this layer is provided to an Effect, the factory runs anew.
+// Critical for test isolation — each test gets its own empty store.
+//
 export const InMemoryUserEventStore = Layer.sync(
   UserEventStore,
   () => makeInMemoryEventStore<UserEvent>()
 )
 
-// Layer that provides AddressEventStore with in-memory implementation
 export const InMemoryAddressEventStore = Layer.sync(
   AddressEventStore,
   () => makeInMemoryEventStore<AddressEvent>()
 )
 
-// Combined layer for convenience — provides both stores
+// -----------------------------------------------------------------------------
+// Layer.merge: Combine multiple layers
+// -----------------------------------------------------------------------------
+// Creates a layer that provides BOTH services.
+// Useful when a program needs multiple services.
+//
+// SCALA ANALOGY: ZLayer.make / ++ operator
+//
 export const InMemoryEventStores = Layer.merge(
   InMemoryUserEventStore,
   InMemoryAddressEventStore
