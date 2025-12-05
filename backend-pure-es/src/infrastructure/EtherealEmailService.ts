@@ -70,6 +70,28 @@ const createEtherealConfig = (): Effect.Effect<EtherealConfig, EmailError> =>
     })
   })
 
+// Convert URLs in text to clickable HTML links
+const textToHtml = (text: string): string => {
+  // Escape HTML entities first
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+
+  // Convert URLs to <a> tags
+  const withLinks = escaped.replace(
+    /(https?:\/\/[^\s]+)/g,
+    '<a href="$1" style="color: #4a90d9;">$1</a>'
+  )
+
+  // Wrap in styled container
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="white-space: pre-wrap;">${withLinks}</div>
+    </div>
+  `
+}
+
 const makeEtherealEmailService = (
   config: EtherealConfig
 ): EmailServiceInterface => ({
@@ -81,8 +103,7 @@ const makeEtherealEmailService = (
           to: email.to,
           subject: email.subject,
           text: email.body,
-          // Simple HTML version for nicer display
-          html: `<pre style="font-family: monospace; white-space: pre-wrap;">${email.body}</pre>`
+          html: textToHtml(email.body)
         })
 
         // Get the preview URL

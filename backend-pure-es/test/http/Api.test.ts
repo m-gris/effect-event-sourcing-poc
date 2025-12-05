@@ -97,7 +97,7 @@ describe("HTTP API", () => {
         expect(sentEmails).toHaveLength(1)
         expect(sentEmails[0].subject).toContain("Address Created")
         expect(sentEmails[0].body).toContain("home")
-        expect(sentEmails[0].body).toContain("REVERT LINK")
+        expect(sentEmails[0].body).toContain("/revert/")
       } finally {
         // Cleanup
         yield* Effect.promise(() => dispose())

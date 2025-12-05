@@ -76,7 +76,7 @@ describe("UpdateAddressField use case", () => {
         expect(emails[0].subject).toContain("City Changed")
         expect(emails[0].body).toContain("Paris")
         expect(emails[0].body).toContain("Lyon")
-        expect(emails[0].body).toContain("REVERT LINK")
+        expect(emails[0].body).toContain("/revert/")
       }).pipe(Effect.provide(layer))
     })
   )

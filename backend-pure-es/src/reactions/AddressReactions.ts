@@ -90,8 +90,8 @@ Address details:
 - ${e.zipCode} ${e.city}
 - ${e.country}
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -101,8 +101,8 @@ If you did not make this change, click here to revert:
         "Address Label Changed - Please Confirm",
         `Your address label was changed from "${e.oldValue}" to "${e.newValue}".
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -112,8 +112,8 @@ If you did not make this change, click here to revert:
         "Street Number Changed - Please Confirm",
         `Your street number was changed from "${e.oldValue}" to "${e.newValue}".
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -123,8 +123,8 @@ If you did not make this change, click here to revert:
         "Street Name Changed - Please Confirm",
         `Your street name was changed from "${e.oldValue}" to "${e.newValue}".
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -134,8 +134,8 @@ If you did not make this change, click here to revert:
         "Zip Code Changed - Please Confirm",
         `Your zip code was changed from "${e.oldValue}" to "${e.newValue}".
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -145,8 +145,8 @@ If you did not make this change, click here to revert:
         "City Changed - Please Confirm",
         `Your city was changed from "${e.oldValue}" to "${e.newValue}".
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -156,8 +156,8 @@ If you did not make this change, click here to revert:
         "Country Changed - Please Confirm",
         `Your country was changed from "${e.oldValue}" to "${e.newValue}".
 
-If you did not make this change, click here to revert:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to revert:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -167,8 +167,8 @@ If you did not make this change, click here to revert:
         "Address Deleted - Please Confirm",
         `Your address "${e.label}" has been deleted.
 
-If you did not make this change, click here to restore it:
-[REVERT LINK: ${e.revertToken}]`
+If you did not make this change, click to restore it:
+${makeRevertUrl(e.revertToken)}`
       )
     ),
 
@@ -198,6 +198,19 @@ If you did not make this change, click here to restore it:
     // this line will cause a compile error. Type safety FTW.
     Match.exhaustive
   )
+
+// =============================================================================
+// Revert URL Builder
+// =============================================================================
+//
+// Builds actual clickable URL for the revert link.
+// For PoC, hardcoded to localhost:5173 (frontend dev server).
+// In production, this would come from config.
+//
+const FRONTEND_BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173"
+
+const makeRevertUrl = (token: string): string =>
+  `${FRONTEND_BASE_URL}/revert/${token}`
 
 // =============================================================================
 // sendEmail — Helper to construct and send
