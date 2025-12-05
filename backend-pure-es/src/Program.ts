@@ -23,6 +23,7 @@ import { ApiLive } from "./http/Api.js"
 // Infrastructure adapters
 import { InMemoryEventStores } from "./infrastructure/InMemoryEventStore.js"
 import { ConsoleEmailService } from "./infrastructure/ConsoleEmailService.js"
+import { EtherealEmailService } from "./infrastructure/EtherealEmailService.js"
 
 // Application services
 import { makeRegistryLayer } from "./Registry.js"
@@ -34,14 +35,23 @@ import { UuidIdGeneratorLive } from "./IdGenerator.js"
 
 const PORT = 3000
 
+// Email adapter selection via environment variable
+// Usage: EMAIL_ADAPTER=ethereal pnpm start
+const EMAIL_ADAPTER = process.env.EMAIL_ADAPTER || "console"
+
 // =============================================================================
 // Layer Composition
 // =============================================================================
 
+// Select email adapter based on config
+const EmailServiceLayer = EMAIL_ADAPTER === "ethereal"
+  ? EtherealEmailService
+  : ConsoleEmailService
+
 // Application dependencies (services needed by use cases)
 const AppDependencies = Layer.mergeAll(
   InMemoryEventStores,
-  ConsoleEmailService,
+  EmailServiceLayer,
   makeRegistryLayer(),
   UuidIdGeneratorLive
 )
@@ -60,11 +70,18 @@ const ServerLive = HttpApiBuilder.serve().pipe(
 // Launch
 // =============================================================================
 
+const emailAdapterInfo = EMAIL_ADAPTER === "ethereal"
+  ? "📬 Ethereal (check console for preview URLs)"
+  : "📝 Console (emails logged to terminal)"
+
 console.log(`
 ═══════════════════════════════════════════════════════════════
   Event Triggers PoC — Pure Event Sourcing Backend
 ═══════════════════════════════════════════════════════════════
   Server starting on http://localhost:${PORT}
+  Email adapter: ${emailAdapterInfo}
+
+  Switch adapters: EMAIL_ADAPTER=ethereal pnpm start
 
   Endpoints:
     POST  /users                              → Create user
