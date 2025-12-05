@@ -377,6 +377,86 @@ This order ensures:
 
 ---
 
+## Orchestration Patterns
+
+### Use Case Layer
+
+The HTTP layer should be thin — just parse request, call use case, format response. Business orchestration lives in a **Use Case** (or "Workflow") layer.
+
+**Why?**
+
+- **Wlaschin**: "Workflows are pipelines. Each step is a function. Compose them."
+- **De Goes**: "Effects compose. Services are capabilities. Keep the HTTP layer thin."
+
+**Use Case responsibilities:**
+
+1. Load required state (user, address)
+2. Execute command via domain logic
+3. React to resulting events (send emails)
+4. Return response
+
+The HTTP handler is dumb plumbing; the use case orchestrates.
+
+**Flow (common to all backends):**
+
+```
+HTTP Request
+    ↓
+Parse & validate input
+    ↓
+Use Case: handleAddressChange(userId, addressId, command)
+    ├── Load user (to get email for notifications)
+    ├── Execute command (backend-specific: ES fold, RDBMS update, etc.)
+    ├── React to changes (send email if user action, skip if correction)
+    └── Return result
+    ↓
+Format HTTP Response
+```
+
+### Revert as "Just Another Command"
+
+The revert link in emails triggers a `RevertChange` command — it flows through the same pipeline as any other command.
+
+**Why?**
+
+- Consistency: same orchestration, same validation, same event emission
+- Corrections are events too (`*Reverted`, `AddressRestored`, `CreationReverted`)
+- The revert token is looked up in state (Pure ES: `pendingReverts` map; Hybrid/RDBMS: lookup table)
+
+**Revert flow:**
+
+```
+GET /revert/:token
+    ↓
+Use Case: handleRevert(token)
+    ├── Look up token → find addressId
+    ├── Issue RevertChange command
+    ├── React to *Reverted event → NO email (corrections are silent)
+    └── Return success/failure
+    ↓
+Redirect to confirmation page
+```
+
+### Why Corrections Don't Trigger Emails
+
+User actions (create, update, delete) → email with revert link
+Corrections (revert) → silent
+
+**Rationale:**
+
+1. **No spam**: User clicked the revert link — they know what's happening
+2. **No infinite loops**: If corrections triggered emails with revert links, you'd get revert-of-revert chains
+3. **Clear mental model**: Actions are revertable, corrections are terminal
+
+This is enforced in the Reactions layer via pattern matching:
+
+```typescript
+Match.tag("CityChanged", (e) => sendEmail(...))     // user action → email
+Match.tag("CityReverted", () => Effect.void)        // correction → silent
+```
+
+---
+
 ## Resolved Decisions
 
 | Decision | Resolution |
