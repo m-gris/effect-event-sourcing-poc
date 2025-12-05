@@ -408,37 +408,52 @@ test/
 | Domain: Address aggregate | ✅ | All 16 events, pendingReverts, full revert logic |
 | EventStore port + InMemory adapter | ✅ | Layer.sync for test isolation |
 | EmailService port + Console adapter | ✅ | CaptureEmailService for test assertions |
+| EmailService Ethereal adapter | ✅ | Real SMTP, clickable preview URLs |
 | CommandHandler (generic) | ✅ | load→fold→decide→append |
-| AddressReactions | ✅ | Match.exhaustive routing, corrections silent |
+| AddressReactions | ✅ | Match.exhaustive routing, corrections silent, real revert URLs |
 | Registry (projection) | ✅ | nickname→userId, label→addressId, token→addressId |
 | IdGenerator service | ✅ | UUID prod, deterministic test |
-| CreateUser use case | ✅ | With uniqueness check, precise error types |
-| CreateAddress use case | ✅ | **First email trigger!** |
-| HTTP routes (CreateUser, CreateAddress) | ✅ | Effect Platform HttpApi |
-| Main wiring (Program.ts) | ✅ | Server on port 3000 |
-| **Vertical slice demo** | ✅ | curl → email in console works! |
+| CreateUser use case + endpoint | ✅ | POST /users |
+| CreateAddress use case + endpoint | ✅ | POST /users/:nickname/addresses (triggers email!) |
+| UpdateAddressField use case + endpoint | ✅ | PATCH /users/:nickname/addresses/:label (field-specific email!) |
+| RevertChange use case + endpoint | ✅ | POST /revert/:token (silent — no email!) |
+| Main wiring (Program.ts) | ✅ | Server on port 3000, configurable email adapter |
+| Frontend: DemoFunnel | ✅ | Step-by-step guided flow |
+| Frontend: Profile | ✅ | Inline editing, modal revert |
+| Frontend: Revert page | ✅ | /revert/:token auto-executes, shows result |
 | Tests for all above | ✅ | TDD throughout |
 
 ### 🚧 Next Steps
 
 | # | Task | Priority | Notes |
 |---|------|----------|-------|
-| 1 | UpdateAddressField use case + endpoint | 🟡 MED | Shows field-specific emails |
-| 2 | RevertChange use case + endpoint | 🟡 MED | The climax — click link, no email |
-| 3 | GetUser use case + endpoint | 🟢 LOW | Read-only, see current state |
-| 4 | DeleteAddress use case + endpoint | 🟢 LOW | Nice to have |
-| 5 | Frontend | 🟢 LOW | Lipstick — curl demos work |
+| 1 | **GetUser use case + endpoint** | 🔴 HIGH | `GET /users/:nickname` — returns user + addresses. **Needed for frontend to reload state after revert.** |
+| 2 | Frontend: persist nickname | 🔴 HIGH | Store nickname in localStorage, fetch user on Profile mount |
+| 3 | DeleteAddress use case + endpoint | 🟢 LOW | Nice to have, not critical for demo |
 
-### Vertical Slice — COMPLETE ✅
+### Full Demo Flow — COMPLETE ✅
 
 ```
 POST /users (CreateUser)
     ↓
 POST /users/:nickname/addresses (CreateAddress)
     ↓
-📧 Email appears in console with revert link
+📧 Email #1 — "Address Created" with revert link
     ↓
-✅ DEMO-ABLE — The core PoC insight is proven!
+PATCH /users/:nickname/addresses/:label (UpdateAddressField)
+    ↓
+📧 Email #2 — "City Changed" (field-specific!) with revert link
+    ↓
+Click revert link in email → /revert/:token
+    ↓
+POST /revert/:token (RevertChange)
+    ↓
+🔇 NO EMAIL — corrections are silent!
+    ↓
+✅ THE POC INSIGHT IS PROVEN
 ```
 
-The pattern is established. Remaining use cases follow the same structure.
+### Remaining Gap
+
+After revert, the frontend Profile page shows "Create Profile" because React state is lost.
+**Fix:** Implement `GET /users/:nickname` endpoint, store nickname in localStorage, fetch on mount.
