@@ -10,15 +10,15 @@ This document describes the key user flows and system interactions for the Event
 
 | Step | Actor | Action |
 |------|-------|--------|
-| 1 | User | Sees empty form (first name, last name fields) and "Add address" button |
-| 2 | User | Fills in first name and last name, clicks Save |
+| 1 | User | Sees empty form (email, first name, last name fields) and "Add address" button |
+| 2 | User | Fills in email, first name and last name, clicks Save |
 | 3 | Frontend | Sends command to backend: create user profile |
-| 4 | Backend | Validates: first name and last name non-empty |
+| 4 | Backend | Validates: email valid, first name and last name non-empty |
 | 5 | Backend | Persists event: `UserCreated` |
 | 6 | Backend | Returns success |
-| 7 | Frontend | Displays saved name |
+| 7 | Frontend | Displays saved profile |
 
-**No email triggered** — name changes don't trigger emails.
+**No email triggered** — profile creation doesn't trigger emails (but email is stored for future notifications).
 
 ---
 
@@ -103,7 +103,7 @@ Each field change triggers a distinct email type (content varies by field). Exac
 | 1 | User | Opens email in Ethereal (test inbox) |
 | 2 | User | Clicks the revert link: `GET /revert/:token` |
 | 3 | Backend | Looks up token → finds the original event |
-| 4 | Backend | Persists revert event (e.g., `AddressFieldReverted`, `AddressRestored`, or `AddressDeleted`) |
+| 4 | Backend | Persists revert event (e.g., `CityReverted`, `AddressRestored`, or `CreationReverted`) |
 | 5 | Backend | Marks token as used |
 | 6 | Backend | Returns confirmation page: "Reverted! [description of what was undone]" |
 
@@ -111,8 +111,8 @@ Each field change triggers a distinct email type (content varies by field). Exac
 
 | Original Action | Revert Event | Result |
 |-----------------|--------------|--------|
-| AddressCreated | AddressDeleted | Address removed |
-| AddressFieldChanged | AddressFieldReverted | Field restored to old value |
+| AddressCreated | CreationReverted | Address removed |
+| *Changed (e.g., CityChanged) | *Reverted (e.g., CityReverted) | Field restored to old value |
 | AddressDeleted | AddressRestored | Address reappears with original values |
 
 ---
