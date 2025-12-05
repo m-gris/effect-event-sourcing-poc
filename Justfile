@@ -12,6 +12,7 @@ check:
 
 # Run backend tests
 test:
+    just check
     pnpm --filter {{backend}} test
 
 # Run backend tests in watch mode
