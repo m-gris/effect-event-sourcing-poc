@@ -1,5 +1,5 @@
 // TYPE ALIAS TRICK (see evolve.ts for full explanation)
-import { Either as E, Option as O } from "effect"
+import { Either as E, Match, Option as O } from "effect"
 
 type Option<A> = O.Option<A>
 const Option = O
@@ -83,9 +83,9 @@ export type UserError = UserNotFound | UserAlreadyExists
 export const decide = (
   state: Option<User>,
   command: UserCommand
-): Either<Array<UserEvent>, UserError> => {
-  switch (command._tag) {
-    case "CreateUser":
+): Either<Array<UserEvent>, UserError> =>
+  Match.value(command).pipe(
+    Match.tag("CreateUser", (cmd) => {
       // BIRTH SEMANTICS: A user can only be created once.
       // If already exists → error, not silent no-op.
       // This makes the command's meaning unambiguous.
@@ -93,47 +93,51 @@ export const decide = (
         return Either.left({ _tag: "UserAlreadyExists" as const })
       }
       return Either.right([{
-        _tag: "UserCreated",
-        id: command.id,
-        firstName: command.firstName,
-        lastName: command.lastName
+        _tag: "UserCreated" as const,
+        id: cmd.id,
+        firstName: cmd.firstName,
+        lastName: cmd.lastName
       }])
+    }),
 
-    case "ChangeFirstName":
-      // For now: assume user exists (happy path). Error case comes next test.
-      return Option.match(state, {
-        // EFFECT SYNTAX: Option.match — pattern match on Option
-        // Like Scala's `option match { case None => ... case Some(v) => ... }`
-        // ERRORS AS VALUES: return Left(error), not throw, not null
+    Match.tag("ChangeFirstName", (cmd) =>
+      // EFFECT SYNTAX: Option.match — pattern match on Option
+      // Like Scala's `option match { case None => ... case Some(v) => ... }`
+      // ERRORS AS VALUES: return Left(error), not throw, not null
+      Option.match(state, {
         onNone: () => Either.left({ _tag: "UserNotFound" as const }),
         onSome: (user) => {
           // NO-OP: if value unchanged, nothing to record
-          if (user.firstName === command.firstName) {
+          if (user.firstName === cmd.firstName) {
             return Either.right([])
           }
           return Either.right([{
             _tag: "FirstNameChanged" as const,
-            id: command.id,
+            id: cmd.id,
             oldValue: user.firstName,
-            newValue: command.firstName
+            newValue: cmd.firstName
           }])
         }
       })
+    ),
 
-    case "ChangeLastName":
-      return Option.match(state, {
+    Match.tag("ChangeLastName", (cmd) =>
+      Option.match(state, {
         onNone: () => Either.left({ _tag: "UserNotFound" as const }),
         onSome: (user) => {
-          if (user.lastName === command.lastName) {
+          if (user.lastName === cmd.lastName) {
             return Either.right([])
           }
           return Either.right([{
             _tag: "LastNameChanged" as const,
-            id: command.id,
+            id: cmd.id,
             oldValue: user.lastName,
-            newValue: command.lastName
+            newValue: cmd.lastName
           }])
         }
       })
-  }
-}
+    ),
+
+    // Compile-time exhaustiveness check
+    Match.exhaustive
+  )
