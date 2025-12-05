@@ -395,3 +395,50 @@ test/
 - `DELETE` — nice to have, not critical for demo
 - Ethereal email — Console adapter shows emails in terminal
 - Frontend — curl is enough for demo
+
+---
+
+## Progress Tracker
+
+### ✅ Done
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Domain: User aggregate | ✅ | State, Events, Commands, decide, evolve |
+| Domain: Address aggregate | ✅ | All 16 events, pendingReverts, full revert logic |
+| EventStore port + InMemory adapter | ✅ | Layer.sync for test isolation |
+| EmailService port + Console adapter | ✅ | CaptureEmailService for test assertions |
+| CommandHandler (generic) | ✅ | load→fold→decide→append |
+| AddressReactions | ✅ | Match.exhaustive routing, corrections silent |
+| Registry (projection) | ✅ | nickname→userId, label→addressId, token→addressId |
+| IdGenerator service | ✅ | UUID prod, deterministic test |
+| CreateUser use case | ✅ | With uniqueness check, precise error types |
+| CreateAddress use case | ✅ | **First email trigger!** |
+| HTTP routes (CreateUser, CreateAddress) | ✅ | Effect Platform HttpApi |
+| Main wiring (Program.ts) | ✅ | Server on port 3000 |
+| **Vertical slice demo** | ✅ | curl → email in console works! |
+| Tests for all above | ✅ | TDD throughout |
+
+### 🚧 Next Steps
+
+| # | Task | Priority | Notes |
+|---|------|----------|-------|
+| 1 | UpdateAddressField use case + endpoint | 🟡 MED | Shows field-specific emails |
+| 2 | RevertChange use case + endpoint | 🟡 MED | The climax — click link, no email |
+| 3 | GetUser use case + endpoint | 🟢 LOW | Read-only, see current state |
+| 4 | DeleteAddress use case + endpoint | 🟢 LOW | Nice to have |
+| 5 | Frontend | 🟢 LOW | Lipstick — curl demos work |
+
+### Vertical Slice — COMPLETE ✅
+
+```
+POST /users (CreateUser)
+    ↓
+POST /users/:nickname/addresses (CreateAddress)
+    ↓
+📧 Email appears in console with revert link
+    ↓
+✅ DEMO-ABLE — The core PoC insight is proven!
+```
+
+The pattern is established. Remaining use cases follow the same structure.
