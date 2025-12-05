@@ -1,13 +1,12 @@
-// Import Option module for runtime functions (Option.some, Option.map, etc.)
-// AND import the Option TYPE separately so we can write `Option<User>` not `Option.Option<User>`
-//
-// TS SYNTAX: Two imports with same name — one for values, one for types.
-// `import { Option }` — the module/namespace (runtime, has functions)
-// `import type { Option }` — just the type (compile-time only, erased at runtime)
-// They coexist because types and values live in separate namespaces in TS.
-//
-import { Option } from "effect"
-import type { Option } from "effect/Option"
+// TYPE ALIAS TRICK: Import namespace with temp alias, then re-expose both type and namespace.
+// 1. `import { Option as O }` — get namespace under temp name
+// 2. `type Option<A> = O.Option<A>` — clean type alias
+// 3. `const Option = O` — re-expose namespace with original name
+// Result: `Option<User>` for types AND `Option.some()` for functions. Best of both worlds.
+import { Option as O } from "effect"
+
+type Option<A> = O.Option<A>
+const Option = O
 import type { UserEvent } from "./Events.js"
 import type { User } from "./State.js"
 

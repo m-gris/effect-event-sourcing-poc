@@ -1,6 +1,14 @@
-import { Either, Option } from "effect"
-import type { Either } from "effect/Either"
-import type { Option } from "effect/Option"
+// TYPE ALIAS TRICK (see evolve.ts for full explanation)
+import { Either as E, Option as O } from "effect"
+
+type Option<A> = O.Option<A>
+const Option = O
+
+// NOTE: Effect's Either<A, E> has success (A) first, error (E) second.
+// Opposite of Scala's Either[E, A]. Matches Effect's `Effect<A, E, R>` convention.
+// Both are "right-biased" (map/flatMap operate on success), just different param order.
+type Either<A, Err> = E.Either<A, Err>
+const Either = E
 import type { UserCommand } from "./Commands.js"
 import type { UserEvent } from "./Events.js"
 import type { User } from "./State.js"
@@ -61,7 +69,7 @@ export type UserError = UserNotFound | UserAlreadyExists
 export const decide = (
   state: Option<User>,
   command: UserCommand
-): Either<UserError, Array<UserEvent>> => {
+): Either<Array<UserEvent>, UserError> => {
   switch (command._tag) {
     case "CreateUser":
       // BIRTH SEMANTICS: A user can only be created once.
