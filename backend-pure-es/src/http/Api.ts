@@ -26,11 +26,14 @@ import { Effect, Layer, Schema } from "effect"
 // Import use cases
 import { createUser } from "../usecases/CreateUser.js"
 import { createAddress } from "../usecases/CreateAddress.js"
+import { updateAddressField } from "../usecases/UpdateAddressField.js"
+import { revertChange } from "../usecases/RevertChange.js"
 
 // Import types for request/response schemas
 import { Email } from "../shared/Email.js"
 import { FirstName, LastName } from "../domain/user/State.js"
-import { Label, StreetNumber, StreetName, ZipCode, City, Country } from "../domain/address/State.js"
+import { Label, StreetNumber, StreetName, ZipCode, City, Country, RevertToken } from "../domain/address/State.js"
+import type { AddressFieldName } from "../domain/address/State.js"
 
 // =============================================================================
 // Request/Response Schemas
@@ -69,6 +72,28 @@ const CreateAddressResponse = Schema.Struct({
   country: Country
 })
 
+// UpdateAddressField
+const AddressFieldNameSchema = Schema.Literal(
+  "label", "streetNumber", "streetName", "zipCode", "city", "country"
+)
+
+const UpdateAddressFieldRequest = Schema.Struct({
+  field: AddressFieldNameSchema,
+  value: Schema.String
+})
+
+const UpdateAddressFieldResponse = Schema.Struct({
+  field: AddressFieldNameSchema,
+  oldValue: Schema.String,
+  newValue: Schema.String
+})
+
+// RevertChange
+const RevertChangeResponse = Schema.Struct({
+  reverted: Schema.Boolean,
+  message: Schema.String
+})
+
 // =============================================================================
 // Error Schemas
 // =============================================================================
@@ -98,6 +123,21 @@ class AddressAlreadyExistsError extends Schema.TaggedError<AddressAlreadyExistsE
   { message: Schema.String }
 ) {}
 
+class AddressNotFoundError extends Schema.TaggedError<AddressNotFoundError>()(
+  "AddressNotFoundError",
+  { message: Schema.String }
+) {}
+
+class TokenNotFoundError extends Schema.TaggedError<TokenNotFoundError>()(
+  "TokenNotFoundError",
+  { message: Schema.String }
+) {}
+
+class RevertTokenInvalidError extends Schema.TaggedError<RevertTokenInvalidError>()(
+  "RevertTokenInvalidError",
+  { message: Schema.String }
+) {}
+
 // =============================================================================
 // API Definition
 // =============================================================================
@@ -122,6 +162,25 @@ const AddressesGroup = HttpApiGroup.make("addresses")
       .addError(UserNotFoundError, { status: 404 })
       .addError(LabelAlreadyExistsError, { status: 409 })
       .addError(AddressAlreadyExistsError, { status: 409 })
+  )
+  .add(
+    // PATCH /users/:nickname/addresses/:label — update a single field
+    // This is where different emails are triggered based on which field changed!
+    HttpApiEndpoint.patch("updateAddressField", "/users/:nickname/addresses/:label")
+      .setPath(Schema.Struct({ nickname: Schema.String, label: Schema.String }))
+      .setPayload(UpdateAddressFieldRequest)
+      .addSuccess(UpdateAddressFieldResponse)
+      .addError(UserNotFoundError, { status: 404 })
+      .addError(AddressNotFoundError, { status: 404 })
+  )
+  .add(
+    // POST /revert/:token — revert a change using the token from the email
+    // This is the climax: revert happens, NO email is sent (corrections are silent)
+    HttpApiEndpoint.post("revertChange", "/revert/:token")
+      .setPath(Schema.Struct({ token: Schema.String }))
+      .addSuccess(RevertChangeResponse)
+      .addError(TokenNotFoundError, { status: 404 })
+      .addError(RevertTokenInvalidError, { status: 400 })
   )
 
 // Full API
@@ -166,37 +225,81 @@ const UsersHandlers = HttpApiBuilder.group(Api, "users", (handlers) =>
 
 // Addresses handlers
 const AddressesHandlers = HttpApiBuilder.group(Api, "addresses", (handlers) =>
-  handlers.handle("createAddress", ({ path, payload }) =>
-    Effect.gen(function* () {
-      const result = yield* createAddress({
-        nickname: path.nickname,
-        ...payload
-      })
-      return {
-        label: result.label,
-        streetNumber: result.streetNumber,
-        streetName: result.streetName,
-        zipCode: result.zipCode,
-        city: result.city,
-        country: result.country
-      }
-    }).pipe(
-      Effect.catchTag("UserNotFound", () =>
-        Effect.fail(new UserNotFoundError({ message: "User not found" }))
-      ),
-      Effect.catchTag("LabelAlreadyExists", () =>
-        Effect.fail(new LabelAlreadyExistsError({ message: "Address with this label already exists" }))
-      ),
-      Effect.catchTag("AddressAlreadyExists", () =>
-        Effect.fail(new AddressAlreadyExistsError({ message: "Address already exists" }))
-      ),
-      // EmailSendError: for PoC, we treat email failures as internal errors (500)
-      // In production, you might want a different strategy (retry, queue, etc.)
-      Effect.catchTag("EmailSendError", (e) =>
-        Effect.die(new Error(`Email send failed: ${e.message}`))
+  handlers
+    .handle("createAddress", ({ path, payload }) =>
+      Effect.gen(function* () {
+        const result = yield* createAddress({
+          nickname: path.nickname,
+          ...payload
+        })
+        return {
+          label: result.label,
+          streetNumber: result.streetNumber,
+          streetName: result.streetName,
+          zipCode: result.zipCode,
+          city: result.city,
+          country: result.country
+        }
+      }).pipe(
+        Effect.catchTag("UserNotFound", () =>
+          Effect.fail(new UserNotFoundError({ message: "User not found" }))
+        ),
+        Effect.catchTag("LabelAlreadyExists", () =>
+          Effect.fail(new LabelAlreadyExistsError({ message: "Address with this label already exists" }))
+        ),
+        Effect.catchTag("AddressAlreadyExists", () =>
+          Effect.fail(new AddressAlreadyExistsError({ message: "Address already exists" }))
+        ),
+        // EmailSendError: for PoC, we treat email failures as internal errors (500)
+        // In production, you might want a different strategy (retry, queue, etc.)
+        Effect.catchTag("EmailSendError", (e) =>
+          Effect.die(new Error(`Email send failed: ${e.message}`))
+        )
       )
     )
-  )
+    .handle("updateAddressField", ({ path, payload }) =>
+      Effect.gen(function* () {
+        const result = yield* updateAddressField({
+          nickname: path.nickname,
+          label: path.label,
+          field: payload.field as AddressFieldName,
+          value: payload.value
+        })
+        return {
+          field: result.field,
+          oldValue: result.oldValue,
+          newValue: result.newValue
+        }
+      }).pipe(
+        Effect.catchTag("UserNotFound", () =>
+          Effect.fail(new UserNotFoundError({ message: "User not found" }))
+        ),
+        Effect.catchTag("AddressNotFound", () =>
+          Effect.fail(new AddressNotFoundError({ message: "Address not found" }))
+        ),
+        Effect.catchTag("EmailSendError", (e) =>
+          Effect.die(new Error(`Email send failed: ${e.message}`))
+        )
+      )
+    )
+    .handle("revertChange", ({ path }) =>
+      Effect.gen(function* () {
+        const result = yield* revertChange({
+          token: path.token as RevertToken
+        })
+        return {
+          reverted: result.reverted,
+          message: result.message
+        }
+      }).pipe(
+        Effect.catchTag("TokenNotFound", () =>
+          Effect.fail(new TokenNotFoundError({ message: "Revert token not found or already used" }))
+        ),
+        Effect.catchTag("RevertTokenInvalid", () =>
+          Effect.fail(new RevertTokenInvalidError({ message: "Revert token is invalid" }))
+        )
+      )
+    )
 )
 
 // =============================================================================

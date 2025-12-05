@@ -30,3 +30,7 @@ lint-fix:
 # Build backend
 build:
     pnpm --filter {{backend}} build
+
+# Start the Pure ES backend server
+serve-pure-es:
+    pnpm --filter {{backend}} start

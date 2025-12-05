@@ -67,17 +67,30 @@ console.log(`
   Server starting on http://localhost:${PORT}
 
   Endpoints:
-    POST /users                          → Create user
-    POST /users/:nickname/addresses      → Create address (triggers email!)
+    POST  /users                              → Create user
+    POST  /users/:nickname/addresses          → Create address (triggers email!)
+    PATCH /users/:nickname/addresses/:label   → Update field (field-specific email!)
+    POST  /revert/:token                      → Revert change (NO email - silent!)
 
-  Try it:
-    curl -X POST http://localhost:${PORT}/users \\
-      -H "Content-Type: application/json" \\
-      -d '{"email":"jean@example.com","firstName":"Jean","lastName":"Dupont"}'
+  Full Demo Flow:
+  ───────────────
+  1. Create user:
+     curl -X POST http://localhost:${PORT}/users \\
+       -H "Content-Type: application/json" \\
+       -d '{"email":"jean@example.com","firstName":"Jean","lastName":"Dupont"}'
 
-    curl -X POST http://localhost:${PORT}/users/jean-dupont/addresses \\
-      -H "Content-Type: application/json" \\
-      -d '{"label":"home","streetNumber":"42","streetName":"Rue de Rivoli","zipCode":"75001","city":"Paris","country":"France"}'
+  2. Create address (watch console for email):
+     curl -X POST http://localhost:${PORT}/users/jean-dupont/addresses \\
+       -H "Content-Type: application/json" \\
+       -d '{"label":"home","streetNumber":"42","streetName":"Rue de Rivoli","zipCode":"75001","city":"Paris","country":"France"}'
+
+  3. Update city (watch console for CITY-SPECIFIC email):
+     curl -X PATCH http://localhost:${PORT}/users/jean-dupont/addresses/home \\
+       -H "Content-Type: application/json" \\
+       -d '{"field":"city","value":"Lyon"}'
+
+  4. Revert the change (copy token from email, NO new email sent!):
+     curl -X POST http://localhost:${PORT}/revert/YOUR_TOKEN_HERE
 
 ═══════════════════════════════════════════════════════════════
 `)
