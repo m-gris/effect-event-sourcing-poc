@@ -22,7 +22,7 @@ import { makeCommandHandler } from "../application/CommandHandler.js"
 import { decide } from "../domain/address/decide.js"
 import { evolve } from "../domain/address/evolve.js"
 import { initialAddressState } from "../domain/address/State.js"
-import { decide as userDecide } from "../domain/user/decide.js"
+// User evolve needed for loadUserEmail helper (read-only)
 import { evolve as userEvolve } from "../domain/user/evolve.js"
 import { Registry } from "../Registry.js"
 import { IdGenerator } from "../IdGenerator.js"
@@ -53,18 +53,45 @@ export interface CreateAddressOutput {
   readonly country: Address["country"]
 }
 
-// Error types
+// =============================================================================
+// Error Types
+// =============================================================================
+//
+// PRECISE ERROR TYPING (same pattern as CreateUser):
+//
+// The `decide` function for Address returns `AddressError` which is the union
+// of ALL possible address errors (AddressNotFound, AddressAlreadyExists, RevertTokenInvalid).
+// But CreateAddress can only fail with AddressAlreadyExists.
+//
+// Additionally, this use case calls `reactToAddressEvent` which can fail with
+// `EmailSendError`. We include that in our error type.
+//
+// We're explicit about what can actually happen:
+//   - UserNotFound: user lookup failed (use case level)
+//   - LabelAlreadyExists: address with this label exists (use case level)
+//   - AddressAlreadyExists: domain rejected (shouldn't happen if label check passed)
+//   - EmailSendError: email sending failed (reaction)
+//
+
 export type UserNotFound = { readonly _tag: "UserNotFound" }
 export type LabelAlreadyExists = { readonly _tag: "LabelAlreadyExists" }
 
-// Import domain errors
-import { type AddressError } from "../domain/address/decide.js"
-export { type AddressError }
+// Import specific domain error (not the full union)
+import { type AddressAlreadyExists } from "../domain/address/decide.js"
+export { type AddressAlreadyExists }
 
-export type CreateAddressError = UserNotFound | LabelAlreadyExists | AddressError
+// Import email error
+import { type EmailSendError } from "../EmailService.js"
+export { type EmailSendError }
+
+export type CreateAddressError =
+  | UserNotFound
+  | LabelAlreadyExists
+  | AddressAlreadyExists
+  | EmailSendError
 
 // =============================================================================
-// Command Handlers
+// Command Handler
 // =============================================================================
 
 const addressCommandHandler = makeCommandHandler({
@@ -74,12 +101,8 @@ const addressCommandHandler = makeCommandHandler({
   decide
 })
 
-const userCommandHandler = makeCommandHandler({
-  tag: UserEventStore,
-  initialState: Option.none(),
-  evolve: userEvolve,
-  decide: userDecide
-})
+// NOTE: No userCommandHandler here — we only READ user state (for email),
+// we don't send commands to the User aggregate in this use case.
 
 // =============================================================================
 // Helper: Load user state to get email
@@ -136,6 +159,8 @@ export const createAddress = (
     const revertToken = (yield* idGenerator.generate()) as RevertToken
 
     // 5. Execute CreateAddress command
+    // NOTE: Narrowing error type — CreateAddress can only fail with AddressAlreadyExists.
+    // AddressNotFound and RevertTokenInvalid are impossible for this command.
     const command = {
       _tag: "CreateAddress" as const,
       id: addressId,
@@ -148,7 +173,14 @@ export const createAddress = (
       city,
       country
     }
-    const events = yield* addressCommandHandler(StreamId(addressId), command)
+    const events = yield* addressCommandHandler(StreamId(addressId), command).pipe(
+      Effect.catchTag("AddressNotFound", () =>
+        Effect.die(new Error("BUG: AddressNotFound should never occur for CreateAddress command"))
+      ),
+      Effect.catchTag("RevertTokenInvalid", () =>
+        Effect.die(new Error("BUG: RevertTokenInvalid should never occur for CreateAddress command"))
+      )
+    )
 
     // 6. Project events to Registry
     for (const event of events) {

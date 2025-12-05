@@ -49,14 +49,43 @@ export interface CreateUserOutput {
   readonly nickname: string
 }
 
-// Error types — re-export from domain + use case level
-import { type UserError } from "../domain/user/decide.js"
-export { type UserError }
+// =============================================================================
+// Error Types
+// =============================================================================
+//
+// PRECISE ERROR TYPING:
+// We declare exactly which errors this use case can produce, not the full
+// domain error union.
+//
+// TS LIMITATION:
+// The `decide` function returns `Either<Event[], UserError>` for ALL commands.
+// TypeScript can't narrow the error type based on which command variant is used.
+// So `userCommandHandler` returns `Effect<..., UserError, ...>` even though
+// CreateUser can only fail with UserAlreadyExists (never UserNotFound).
+//
+// PRAGMATIC SOLUTION:
+// We import the specific error type we know is possible (UserAlreadyExists)
+// and declare our use case error as the precise union. This is an assertion
+// based on domain knowledge that the type system can't verify.
+//
+// WLASCHIN PRINCIPLE:
+// "Make illegal states unrepresentable" — but TS has limits. We document
+// the gap between what the code can do and what the types express.
+//
+// If we wanted full type safety, we'd need:
+//   - Separate `decideCreateUser`, `decideChangeFirstName`, etc. functions
+//   - Or GADTs/dependent types (not available in TS)
+//
+import { type UserAlreadyExists } from "../domain/user/decide.js"
+export { type UserAlreadyExists }
 
-// Use case adds its own check before calling domain
+// Use case adds its own uniqueness check before calling domain
 export type NicknameAlreadyExists = { readonly _tag: "NicknameAlreadyExists" }
 
-export type CreateUserError = UserError | NicknameAlreadyExists
+// Precise error type for this use case:
+// - UserAlreadyExists: from domain (CreateUser command rejected)
+// - NicknameAlreadyExists: from use case (uniqueness check)
+export type CreateUserError = UserAlreadyExists | NicknameAlreadyExists
 
 // =============================================================================
 // User Command Handler
@@ -97,6 +126,9 @@ export const createUser = (
     const userId = (yield* idGenerator.generate()) as UserId
 
     // 3. Execute CreateUser command
+    // NOTE: We narrow the error type here. The command handler returns UserError
+    // (which includes UserNotFound), but CreateUser can only fail with UserAlreadyExists.
+    // We catch UserNotFound and convert to a defect — if it ever happens, it's a bug.
     const command = {
       _tag: "CreateUser" as const,
       id: userId,
@@ -104,7 +136,11 @@ export const createUser = (
       firstName,
       lastName
     }
-    const events = yield* userCommandHandler(StreamId(userId), command)
+    const events = yield* userCommandHandler(StreamId(userId), command).pipe(
+      Effect.catchTag("UserNotFound", () =>
+        Effect.die(new Error("BUG: UserNotFound should never occur for CreateUser command"))
+      )
+    )
 
     // 4. Project events to Registry
     for (const event of events) {
