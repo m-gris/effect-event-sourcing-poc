@@ -270,3 +270,128 @@ This keeps HTTP layer focused on:
 - Parsing requests
 - Calling use cases
 - Formatting responses
+
+---
+
+## Implementation Plan (Pure ES Backend)
+
+### The Demo Story
+
+What the boss needs to see:
+
+1. **Create user** → `POST /users` → no email (just setup)
+2. **Create address** → `POST /users/jean-dupont/addresses` → 📧 email arrives!
+3. **Update city** → `PATCH /users/jean-dupont/addresses/home` → 📧 another email!
+4. **Click revert link** → `GET /revert/:token` → city reverts, NO email
+5. **View user** → `GET /users/jean-dupont` → see city is back to Paris
+
+### The Missing Piece: Registry (Lookups)
+
+We have `EventStore` keyed by `StreamId` (= aggregateId). But the API uses human-readable identifiers:
+
+| API uses | Need to find |
+|----------|--------------|
+| nickname | → userId |
+| label | → addressId |
+| token | → addressId (for revert) |
+
+**Solution:** In-memory **Registry** — a **projection** (read model derived from events)
+
+```typescript
+Registry
+  ├── nicknameToUserId: Map<string, UserId>      // from UserCreated
+  ├── (userId, label) → addressId: Map<string, AddressId>  // from AddressCreated
+  └── token → addressId: Map<RevertToken, AddressId>       // from events with revertToken
+```
+
+Updated by projecting events — `registry.projectUserEvent(event)` / `registry.projectAddressEvent(event)`.
+The registry subscribes to events and builds indexes. Proper event sourcing, not imperative updates.
+
+### Build Order
+
+| # | Component | Purpose | TDD |
+|---|-----------|---------|-----|
+| 1 | **Registry** | Lookup indexes | Light (maps) |
+| 2 | **CreateUser** use case | Need user first | 1 happy path |
+| 3 | **CreateAddress** use case | Need address, triggers email | 1 test |
+| 4 | **UpdateAddressField** use case | Core demo flow | 1 test |
+| 5 | **RevertChange** use case | The climax — no email | 1 test |
+| 6 | **HTTP routes** | Thin glue over use cases | Manual test |
+| 7 | **Main** | Wire layers, start server | Manual test |
+
+### Use Case Pattern
+
+Each use case follows the same structure:
+
+```typescript
+const createAddress = (nickname, addressData) =>
+  Effect.gen(function* () {
+    // 1. Lookup prerequisites
+    const registry = yield* Registry
+    const userId = yield* registry.getUserIdByNickname(nickname)
+    const user = yield* loadUserState(userId)  // need email for reaction
+
+    // 2. Generate IDs
+    const addressId = generateAddressId()
+    const revertToken = generateRevertToken()
+
+    // 3. Execute command
+    const command = { _tag: "CreateAddress", id: addressId, revertToken, ...addressData }
+    const events = yield* addressCommandHandler(StreamId(addressId), command)
+
+    // 4. Project events to registry (event-driven, not imperative)
+    for (const event of events) {
+      yield* registry.projectAddressEvent(event)
+    }
+
+    // 5. React (send email)
+    for (const event of events) {
+      yield* reactToAddressEvent(event, user.email)
+    }
+
+    // 6. Return result
+    return { ...addressData, id: addressId }
+  })
+```
+
+### File Structure (to create)
+
+```
+src/
+├── Registry.ts              # Projection — read model derived from events
+├── usecases/
+│   ├── CreateUser.ts
+│   ├── CreateAddress.ts
+│   ├── UpdateAddressField.ts
+│   ├── RevertChange.ts
+│   └── GetUser.ts           # Read-only, no command
+├── http/
+│   ├── routes.ts            # All route definitions
+│   └── server.ts            # HTTP server setup
+└── main.ts                  # Wire everything, start
+
+test/
+└── usecases/
+    ├── CreateUser.test.ts
+    ├── CreateAddress.test.ts
+    ├── UpdateAddressField.test.ts
+    └── RevertChange.test.ts
+```
+
+### Endpoints → Use Cases Mapping
+
+| Endpoint | Use Case | Triggers Email |
+|----------|----------|----------------|
+| `POST /users` | CreateUser | ❌ |
+| `GET /users/:nickname` | GetUser | ❌ |
+| `POST /users/:nickname/addresses` | CreateAddress | ✅ |
+| `PATCH /users/:nickname/addresses/:label` | UpdateAddressField | ✅ |
+| `DELETE /users/:nickname/addresses/:label` | DeleteAddress | ✅ |
+| `GET /revert/:token` | RevertChange | ❌ (silent) |
+
+### What We Skip for MVP
+
+- `GET /users/:nickname/addresses/:label` — can see address in GET user response
+- `DELETE` — nice to have, not critical for demo
+- Ethereal email — Console adapter shows emails in terminal
+- Frontend — curl is enough for demo
