@@ -4,9 +4,23 @@ import { Either as E, Option as O } from "effect"
 type Option<A> = O.Option<A>
 const Option = O
 
-// NOTE: Effect's Either<A, E> has success (A) first, error (E) second.
-// Opposite of Scala's Either[E, A]. Matches Effect's `Effect<A, E, R>` convention.
-// Both are "right-biased" (map/flatMap operate on success), just different param order.
+// =============================================================================
+// EFFECT vs SCALA: Either type parameter order
+// =============================================================================
+//
+// Effect:  Either<Success, Error>   →  Either<UserEvent[], UserError>
+// Scala:   Either[Error, Success]   →  Either[UserError, List[UserEvent]]
+//
+// Effect puts success FIRST to match `Effect<A, E, R>` (success, error, requirements).
+// Both are "right-biased" — map/flatMap operate on the success channel.
+//
+// The functions work the same way in both:
+//   Either.right(value)  →  success (the A / first param in Effect)
+//   Either.left(error)   →  failure (the E / second param in Effect)
+//
+// If you're coming from Scala, just remember: Effect flips the type params,
+// but Right is still success and Left is still error.
+//
 type Either<A, Err> = E.Either<A, Err>
 const Either = E
 import type { UserCommand } from "./Commands.js"
