@@ -34,3 +34,13 @@ build:
 # Start the Pure ES backend server
 serve-pure-es:
     pnpm --filter {{backend}} start
+
+# Start the frontend dev server
+serve-frontend:
+    pnpm --filter frontend dev
+
+# Start both backend and frontend (run in separate terminals)
+dev:
+    @echo "Run these in separate terminals:"
+    @echo "  just serve-pure-es   # Backend on :3000"
+    @echo "  just serve-frontend  # Frontend on :5173"

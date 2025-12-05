@@ -1,0 +1,177 @@
+/* =============================================================================
+   Event Triggers PoC — Minimal Demo Styling
+   ============================================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  color: #00d9ff;
+  margin-bottom: 0.25em;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  margin-top: 0;
+  margin-bottom: 2em;
+}
+
+/* Progress indicator */
+.progress {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2em;
+  padding: 1em;
+  background: #16213e;
+  border-radius: 8px;
+}
+
+.progress span {
+  font-size: 0.85em;
+  color: #555;
+  padding: 0.5em 0.75em;
+  border-radius: 4px;
+}
+
+.progress span.active {
+  background: #00d9ff;
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
+.progress span.done {
+  color: #4ade80;
+}
+
+/* Cards */
+.card {
+  background: #16213e;
+  border-radius: 12px;
+  padding: 1.5em;
+  margin-bottom: 1em;
+}
+
+.card h2 {
+  margin-top: 0;
+  color: #00d9ff;
+  font-size: 1.25em;
+}
+
+.hint {
+  color: #888;
+  font-size: 0.9em;
+  margin: 0.5em 0;
+}
+
+.current-address {
+  background: #0f3460;
+  padding: 1em;
+  border-radius: 8px;
+  margin-bottom: 1em;
+  font-size: 0.9em;
+}
+
+/* Forms */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  font-size: 0.9em;
+  color: #aaa;
+}
+
+.form input,
+.form select {
+  padding: 0.75em;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #0f3460;
+  color: #eee;
+  font-size: 1em;
+}
+
+.form input:focus,
+.form select:focus {
+  outline: none;
+  border-color: #00d9ff;
+}
+
+.form button {
+  padding: 1em;
+  background: #00d9ff;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.form button:hover:not(:disabled) {
+  background: #00b8d9;
+}
+
+.form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Messages */
+.error {
+  background: #dc2626;
+  color: white;
+  padding: 1em;
+  border-radius: 8px;
+  margin-bottom: 1em;
+}
+
+.success {
+  background: #16a34a;
+  color: white;
+  padding: 1em;
+  border-radius: 8px;
+  margin-bottom: 1em;
+}
+
+/* Reset button */
+.reset {
+  display: block;
+  width: 100%;
+  padding: 0.75em;
+  background: transparent;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+  margin-top: 1em;
+}
+
+.reset:hover {
+  border-color: #555;
+  color: #aaa;
+}
