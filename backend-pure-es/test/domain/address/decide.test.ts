@@ -127,7 +127,7 @@ describe("decide", () => {
     { field: "country", cmdTag: "ChangeCountry", evtTag: "CountryChanged", newValue: "Belgium" }
   ] as const
 
-  describe.each(fieldTestCases)("$cmdTag", ({ field, cmdTag, evtTag, newValue }) => {
+  describe.each(fieldTestCases)("$cmdTag", ({ cmdTag, evtTag, field, newValue }) => {
     it(`on state with address → Right([${evtTag}]) with revertToken`, () => {
       const fieldRevertToken = `token-${field}` as RevertToken
       const command = {
@@ -226,13 +226,18 @@ describe("decide", () => {
     const revertTestCases = [
       { field: "label", evtTag: "LabelReverted", changedValue: "Work", originalValue: "Home" },
       { field: "streetNumber", evtTag: "StreetNumberReverted", changedValue: "100", originalValue: "42" },
-      { field: "streetName", evtTag: "StreetNameReverted", changedValue: "Avenue Montaigne", originalValue: "Rue de Rivoli" },
+      {
+        field: "streetName",
+        evtTag: "StreetNameReverted",
+        changedValue: "Avenue Montaigne",
+        originalValue: "Rue de Rivoli"
+      },
       { field: "zipCode", evtTag: "ZipCodeReverted", changedValue: "75008", originalValue: "75001" },
       { field: "city", evtTag: "CityReverted", changedValue: "Lyon", originalValue: "Paris" },
       { field: "country", evtTag: "CountryReverted", changedValue: "Belgium", originalValue: "France" }
     ] as const
 
-    describe.each(revertTestCases)("reverting $field change", ({ field, evtTag, changedValue, originalValue }) => {
+    describe.each(revertTestCases)("reverting $field change", ({ changedValue, evtTag, field, originalValue }) => {
       it(`with valid token → Right([${evtTag}])`, () => {
         const fieldRevertToken = `token-${field}` as RevertToken
 
@@ -256,8 +261,8 @@ describe("decide", () => {
           _tag: evtTag,
           id: addressId,
           revertToken: fieldRevertToken,
-          oldValue: changedValue,   // What we're reverting FROM
-          newValue: originalValue   // What we're reverting TO
+          oldValue: changedValue, // What we're reverting FROM
+          newValue: originalValue // What we're reverting TO
         }]))
       })
     })
@@ -357,7 +362,7 @@ describe("decide", () => {
       expect(result).toEqual(Either.right([{
         _tag: "CreationReverted",
         id: addressId,
-        revertToken: creationToken  // Consumed token (for audit trail)
+        revertToken: creationToken // Consumed token (for audit trail)
       }]))
     })
   })

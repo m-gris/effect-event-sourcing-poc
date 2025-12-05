@@ -25,14 +25,9 @@
 // No persistence — data is lost when the process ends. That's fine for dev/test.
 //
 import { Effect, Layer } from "effect"
-import {
-  type EventStoreService,
-  type StreamId,
-  UserEventStore,
-  AddressEventStore
-} from "../EventStore.js"
-import type { UserEvent } from "../domain/user/Events.js"
 import type { AddressEvent } from "../domain/address/Events.js"
+import type { UserEvent } from "../domain/user/Events.js"
+import { AddressEventStore, type EventStoreService, type StreamId, UserEventStore } from "../EventStore.js"
 
 // =============================================================================
 // Factory: Create an in-memory EventStore instance
@@ -54,7 +49,7 @@ export const makeInMemoryEventStore = <E>(): EventStoreService<E> => {
   // The storage: Map from StreamId to array of events
   // Using Map (not plain object) because StreamId is a branded string,
   // and Map handles any key type correctly.
-  const streams = new Map<StreamId, E[]>()
+  const streams = new Map<StreamId, Array<E>>()
 
   return {
     // -------------------------------------------------------------------------
@@ -114,15 +109,16 @@ export const makeInMemoryEventStore = <E>(): EventStoreService<E> => {
 //
 
 // Layer that provides UserEventStore with in-memory implementation
-export const InMemoryUserEventStore = Layer.succeed(
+// Using Layer.sync so each use creates a FRESH store (important for test isolation)
+export const InMemoryUserEventStore = Layer.sync(
   UserEventStore,
-  makeInMemoryEventStore<UserEvent>()
+  () => makeInMemoryEventStore<UserEvent>()
 )
 
 // Layer that provides AddressEventStore with in-memory implementation
-export const InMemoryAddressEventStore = Layer.succeed(
+export const InMemoryAddressEventStore = Layer.sync(
   AddressEventStore,
-  makeInMemoryEventStore<AddressEvent>()
+  () => makeInMemoryEventStore<AddressEvent>()
 )
 
 // Combined layer for convenience — provides both stores

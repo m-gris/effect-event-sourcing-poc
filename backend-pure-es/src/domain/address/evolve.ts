@@ -1,11 +1,6 @@
 import { Match } from "effect"
 import type { AddressEvent } from "./Events.js"
-import type {
-  Address,
-  AddressState,
-  RevertableChange,
-  RevertToken
-} from "./State.js"
+import type { Address, AddressState, RevertableChange, RevertToken } from "./State.js"
 
 // =============================================================================
 // evolve: (State, Event) → State
@@ -119,7 +114,6 @@ export const evolve = (
         )
       }
     }),
-
     // -------------------------------------------------------------------------
     // Field change events
     // -------------------------------------------------------------------------
@@ -137,7 +131,6 @@ export const evolve = (
         { _tag: "FieldChange", field: "label", oldValue: e.oldValue, newValue: e.newValue }
       )
     })),
-
     Match.tag("StreetNumberChanged", (e) => ({
       address: state.address ? { ...state.address, streetNumber: e.newValue } : null,
       pendingReverts: addPendingRevert(
@@ -146,7 +139,6 @@ export const evolve = (
         { _tag: "FieldChange", field: "streetNumber", oldValue: e.oldValue, newValue: e.newValue }
       )
     })),
-
     Match.tag("StreetNameChanged", (e) => ({
       address: state.address ? { ...state.address, streetName: e.newValue } : null,
       pendingReverts: addPendingRevert(
@@ -155,7 +147,6 @@ export const evolve = (
         { _tag: "FieldChange", field: "streetName", oldValue: e.oldValue, newValue: e.newValue }
       )
     })),
-
     Match.tag("ZipCodeChanged", (e) => ({
       address: state.address ? { ...state.address, zipCode: e.newValue } : null,
       pendingReverts: addPendingRevert(
@@ -164,7 +155,6 @@ export const evolve = (
         { _tag: "FieldChange", field: "zipCode", oldValue: e.oldValue, newValue: e.newValue }
       )
     })),
-
     Match.tag("CityChanged", (e) => ({
       address: state.address ? { ...state.address, city: e.newValue } : null,
       pendingReverts: addPendingRevert(
@@ -173,7 +163,6 @@ export const evolve = (
         { _tag: "FieldChange", field: "city", oldValue: e.oldValue, newValue: e.newValue }
       )
     })),
-
     Match.tag("CountryChanged", (e) => ({
       address: state.address ? { ...state.address, country: e.newValue } : null,
       pendingReverts: addPendingRevert(
@@ -182,7 +171,6 @@ export const evolve = (
         { _tag: "FieldChange", field: "country", oldValue: e.oldValue, newValue: e.newValue }
       )
     })),
-
     // -------------------------------------------------------------------------
     // Death event
     // -------------------------------------------------------------------------
@@ -209,7 +197,6 @@ export const evolve = (
         }
       )
     })),
-
     // -------------------------------------------------------------------------
     // Field revert events
     // -------------------------------------------------------------------------
@@ -220,32 +207,26 @@ export const evolve = (
       address: state.address ? { ...state.address, label: e.newValue } : null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     Match.tag("StreetNumberReverted", (e) => ({
       address: state.address ? { ...state.address, streetNumber: e.newValue } : null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     Match.tag("StreetNameReverted", (e) => ({
       address: state.address ? { ...state.address, streetName: e.newValue } : null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     Match.tag("ZipCodeReverted", (e) => ({
       address: state.address ? { ...state.address, zipCode: e.newValue } : null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     Match.tag("CityReverted", (e) => ({
       address: state.address ? { ...state.address, city: e.newValue } : null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     Match.tag("CountryReverted", (e) => ({
       address: state.address ? { ...state.address, country: e.newValue } : null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     // -------------------------------------------------------------------------
     // CreationReverted (correction — terminal)
     // -------------------------------------------------------------------------
@@ -258,7 +239,6 @@ export const evolve = (
       address: null,
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     // -------------------------------------------------------------------------
     // AddressRestored (correction — terminal)
     // -------------------------------------------------------------------------
@@ -280,7 +260,6 @@ export const evolve = (
       },
       pendingReverts: removePendingRevert(state.pendingReverts, e.revertToken)
     })),
-
     // Compile-time exhaustiveness check
     Match.exhaustive
   )

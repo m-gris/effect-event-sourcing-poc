@@ -115,7 +115,7 @@ describe("decide", () => {
       const command: ChangeFirstName = {
         _tag: "ChangeFirstName",
         id: userId,
-        firstName  // same as current
+        firstName // same as current
       }
 
       const result = decide(Option.some(existingUser), command)
@@ -125,7 +125,6 @@ describe("decide", () => {
   })
 
   describe("ChangeLastName", () => {
-
     it("ChangeLastName on Some(User) → Right([LastNameChanged])", () => {
       const existingUser: User = { id: userId, firstName, lastName }
       const newLastName = "Martin" as User["lastName"]
@@ -163,7 +162,7 @@ describe("decide", () => {
       const command: ChangeLastName = {
         _tag: "ChangeLastName",
         id: userId,
-        lastName  // same as current
+        lastName // same as current
       }
 
       const result = decide(Option.some(existingUser), command)

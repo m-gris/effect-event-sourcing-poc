@@ -100,7 +100,7 @@ export type RevertToken = typeof RevertToken.Type
 
 export const Address = Schema.Struct({
   id: AddressId,
-  userId: UserId,           // Reference to owning user (not nested — separate aggregate)
+  userId: UserId, // Reference to owning user (not nested — separate aggregate)
   label: Label,
   streetNumber: StreetNumber,
   streetName: StreetName,
@@ -171,8 +171,8 @@ export type AddressFieldName =
 export type RevertableFieldChange = {
   readonly _tag: "FieldChange"
   readonly field: AddressFieldName
-  readonly oldValue: string  // Pre-change value (will become newValue in *Reverted)
-  readonly newValue: string  // Post-change value (will become oldValue in *Reverted)
+  readonly oldValue: string // Pre-change value (will become newValue in *Reverted)
+  readonly newValue: string // Post-change value (will become oldValue in *Reverted)
 }
 
 // -----------------------------------------------------------------------------
@@ -194,7 +194,7 @@ export type RevertableFieldChange = {
 //
 export type RevertableCreation = {
   readonly _tag: "Creation"
-  readonly snapshot: Address  // Full address data for the deletion event
+  readonly snapshot: Address // Full address data for the deletion event
 }
 
 // -----------------------------------------------------------------------------
@@ -205,7 +205,7 @@ export type RevertableCreation = {
 //
 export type RevertableDeletion = {
   readonly _tag: "Deletion"
-  readonly snapshot: Address  // Full address data for restoration
+  readonly snapshot: Address // Full address data for restoration
 }
 
 // -----------------------------------------------------------------------------
@@ -238,7 +238,7 @@ export type RevertableChange =
 // We're not serializing the pendingReverts map; it's rebuilt from events.
 //
 export type AddressState = {
-  readonly address: Address | null  // null = not created yet or deleted
+  readonly address: Address | null // null = not created yet or deleted
   readonly pendingReverts: ReadonlyMap<RevertToken, RevertableChange>
 }
 

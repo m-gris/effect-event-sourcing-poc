@@ -1,5 +1,8 @@
 // TYPE ALIAS TRICK (see evolve.ts for full explanation)
 import { Either as E, Match, Option as O } from "effect"
+import type { UserCommand } from "./Commands.js"
+import type { UserEvent } from "./Events.js"
+import type { User } from "./State.js"
 
 type Option<A> = O.Option<A>
 const Option = O
@@ -23,9 +26,6 @@ const Option = O
 //
 type Either<A, Err> = E.Either<A, Err>
 const Either = E
-import type { UserCommand } from "./Commands.js"
-import type { UserEvent } from "./Events.js"
-import type { User } from "./State.js"
 
 // =============================================================================
 // Domain Errors
@@ -99,7 +99,6 @@ export const decide = (
         lastName: cmd.lastName
       }])
     }),
-
     Match.tag("ChangeFirstName", (cmd) =>
       // EFFECT SYNTAX: Option.match — pattern match on Option
       // Like Scala's `option match { case None => ... case Some(v) => ... }`
@@ -118,9 +117,7 @@ export const decide = (
             newValue: cmd.firstName
           }])
         }
-      })
-    ),
-
+      })),
     Match.tag("ChangeLastName", (cmd) =>
       Option.match(state, {
         onNone: () => Either.left({ _tag: "UserNotFound" as const }),
@@ -135,9 +132,7 @@ export const decide = (
             newValue: cmd.lastName
           }])
         }
-      })
-    ),
-
+      })),
     // Compile-time exhaustiveness check
     Match.exhaustive
   )

@@ -21,9 +21,9 @@
 //
 import { describe, expect, it } from "@effect/vitest"
 import type { AddressEvent } from "../../../src/domain/address/Events.js"
+import { evolve } from "../../../src/domain/address/evolve.js"
 import type { Address, AddressState, RevertToken } from "../../../src/domain/address/State.js"
 import { initialAddressState } from "../../../src/domain/address/State.js"
-import { evolve } from "../../../src/domain/address/evolve.js"
 
 // =============================================================================
 // Test Fixtures
@@ -114,7 +114,7 @@ describe("evolve", () => {
   // ---------------------------------------------------------------------------
   // Field Change Events (parametrized)
   // ---------------------------------------------------------------------------
-  describe.each(fieldTestCases)("$tag", ({ field, tag, newValue }) => {
+  describe.each(fieldTestCases)("$tag", ({ field, newValue, tag }) => {
     it(`on state with address → updates ${field} + adds pending revert`, () => {
       const fieldRevertToken = `token-${field}` as RevertToken
       // Construct event dynamically
@@ -202,13 +202,18 @@ describe("evolve", () => {
   const revertTestCases = [
     { field: "label", tag: "LabelReverted", changedValue: "Work", originalValue: "Home" },
     { field: "streetNumber", tag: "StreetNumberReverted", changedValue: "100", originalValue: "42" },
-    { field: "streetName", tag: "StreetNameReverted", changedValue: "Avenue Montaigne", originalValue: "Rue de Rivoli" },
+    {
+      field: "streetName",
+      tag: "StreetNameReverted",
+      changedValue: "Avenue Montaigne",
+      originalValue: "Rue de Rivoli"
+    },
     { field: "zipCode", tag: "ZipCodeReverted", changedValue: "75008", originalValue: "75001" },
     { field: "city", tag: "CityReverted", changedValue: "Lyon", originalValue: "Paris" },
     { field: "country", tag: "CountryReverted", changedValue: "Belgium", originalValue: "France" }
   ] as const
 
-  describe.each(revertTestCases)("$tag", ({ field, tag, changedValue, originalValue }) => {
+  describe.each(revertTestCases)("$tag", ({ changedValue, field, originalValue, tag }) => {
     it(`on state with changed ${field} → reverts to original + removes pending revert`, () => {
       const fieldRevertToken = `token-${field}` as RevertToken
 

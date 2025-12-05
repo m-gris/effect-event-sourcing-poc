@@ -4,11 +4,11 @@
 // 3. `const Option = O` — re-expose namespace with original name
 // Result: `Option<User>` for types AND `Option.some()` for functions. Best of both worlds.
 import { Match, Option as O } from "effect"
+import type { UserEvent } from "./Events.js"
+import type { User } from "./State.js"
 
 type Option<A> = O.Option<A>
 const Option = O
-import type { UserEvent } from "./Events.js"
-import type { User } from "./State.js"
 
 // =============================================================================
 // evolve: (State, Event) → State
@@ -69,9 +69,7 @@ export const evolve = (state: Option<User>, event: UserEvent): Option<User> =>
         id: e.id,
         firstName: e.firstName,
         lastName: e.lastName
-      })
-    ),
-
+      })),
     // Update events: modify the relevant field.
     // We map over the Option — if state is None, this is a no-op (shouldn't happen
     // in a well-formed event stream, but we handle it gracefully).
@@ -84,14 +82,8 @@ export const evolve = (state: Option<User>, event: UserEvent): Option<User> =>
     // Like Scala's `.copy()` but copies ALL fields, not specific ones.
     // Similar to Python's `{**dict}` or Rust's `..struct` syntax.
     //
-    Match.tag("FirstNameChanged", (e) =>
-      Option.map(state, (user) => ({ ...user, firstName: e.newValue }))
-    ),
-
-    Match.tag("LastNameChanged", (e) =>
-      Option.map(state, (user) => ({ ...user, lastName: e.newValue }))
-    ),
-
+    Match.tag("FirstNameChanged", (e) => Option.map(state, (user) => ({ ...user, firstName: e.newValue }))),
+    Match.tag("LastNameChanged", (e) => Option.map(state, (user) => ({ ...user, lastName: e.newValue }))),
     // Compile-time exhaustiveness check — if we add a new event and forget to
     // handle it here, TypeScript will error on this line.
     Match.exhaustive

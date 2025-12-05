@@ -1,15 +1,6 @@
 import { Schema } from "effect"
 import { UserId } from "../user/State.js"
-import {
-  AddressId,
-  City,
-  Country,
-  Label,
-  RevertToken,
-  StreetName,
-  StreetNumber,
-  ZipCode
-} from "./State.js"
+import { AddressId, City, Country, Label, RevertToken, StreetName, StreetNumber, ZipCode } from "./State.js"
 
 // =============================================================================
 // Address Events
@@ -43,7 +34,7 @@ import {
 export const AddressCreated = Schema.Struct({
   _tag: Schema.Literal("AddressCreated"),
   id: AddressId,
-  revertToken: RevertToken,  // Token for the safety email revert link
+  revertToken: RevertToken, // Token for the safety email revert link
   userId: UserId,
   label: Label,
   streetNumber: StreetNumber,
@@ -114,11 +105,11 @@ const makeFieldChangedEvent = <
   S extends Schema.Schema.Any
 >(tag: Tag, schema: S) =>
   Schema.Struct({
-    _tag: Schema.Literal(tag),  // Schema.Literal(tag) uses the literal type of Tag
+    _tag: Schema.Literal(tag), // Schema.Literal(tag) uses the literal type of Tag
     id: AddressId,
-    revertToken: RevertToken,   // Token for the safety email revert link
-    oldValue: schema,           // schema's type flows through — oldValue: S
-    newValue: schema            // same type for newValue
+    revertToken: RevertToken, // Token for the safety email revert link
+    oldValue: schema, // schema's type flows through — oldValue: S
+    newValue: schema // same type for newValue
   })
 
 // Generate all field change events
@@ -146,12 +137,12 @@ const fieldChangedEvents = {
 // Destructuring is the closest we get to reducing repetition.
 // For true codegen, you'd use external tools (ts-morph, plop, hygen).
 export const {
-  LabelChanged,
-  StreetNumberChanged,
-  StreetNameChanged,
-  ZipCodeChanged,
   CityChanged,
-  CountryChanged
+  CountryChanged,
+  LabelChanged,
+  StreetNameChanged,
+  StreetNumberChanged,
+  ZipCodeChanged
 } = fieldChangedEvents
 
 // Type exports (still manual — TS has no macro to derive these)
@@ -205,8 +196,8 @@ const makeFieldRevertedEvent = <
     _tag: Schema.Literal(tag),
     id: AddressId,
     revertToken: RevertToken,
-    oldValue: schema,  // The value we're reverting from (post-change)
-    newValue: schema   // The value we're reverting to (pre-change)
+    oldValue: schema, // The value we're reverting from (post-change)
+    newValue: schema // The value we're reverting to (pre-change)
   })
 
 const fieldRevertedEvents = {
@@ -219,12 +210,12 @@ const fieldRevertedEvents = {
 } as const
 
 export const {
-  LabelReverted,
-  StreetNumberReverted,
-  StreetNameReverted,
-  ZipCodeReverted,
   CityReverted,
-  CountryReverted
+  CountryReverted,
+  LabelReverted,
+  StreetNameReverted,
+  StreetNumberReverted,
+  ZipCodeReverted
 } = fieldRevertedEvents
 
 export type LabelReverted = typeof LabelReverted.Type
@@ -271,7 +262,7 @@ export type CountryReverted = typeof CountryReverted.Type
 export const CreationReverted = Schema.Struct({
   _tag: Schema.Literal("CreationReverted"),
   id: AddressId,
-  revertToken: RevertToken  // The consumed token (for audit trail)
+  revertToken: RevertToken // The consumed token (for audit trail)
 })
 export type CreationReverted = typeof CreationReverted.Type
 
@@ -287,7 +278,7 @@ export type CreationReverted = typeof CreationReverted.Type
 export const AddressRestored = Schema.Struct({
   _tag: Schema.Literal("AddressRestored"),
   id: AddressId,
-  revertToken: RevertToken,  // The consumed token (for audit trail)
+  revertToken: RevertToken, // The consumed token (for audit trail)
   userId: UserId,
   label: Label,
   streetNumber: StreetNumber,

@@ -13,12 +13,12 @@
 //
 import { Either as E, Match } from "effect"
 
-type Either<A, Err> = E.Either<A, Err>
-const Either = E
-
 import type { AddressCommand } from "./Commands.js"
 import type { AddressEvent } from "./Events.js"
 import type { AddressFieldName, AddressState, RevertToken } from "./State.js"
+
+type Either<A, Err> = E.Either<A, Err>
+const Either = E
 
 // =============================================================================
 // Domain Errors
@@ -103,7 +103,6 @@ export const decide = (
         country: cmd.country
       }])
     }),
-
     // -------------------------------------------------------------------------
     // Field change commands
     // -------------------------------------------------------------------------
@@ -117,7 +116,7 @@ export const decide = (
         return Either.left({ _tag: "AddressNotFound" as const })
       }
       if (state.address.label === cmd.label) {
-        return Either.right([])  // No-op: value unchanged
+        return Either.right([]) // No-op: value unchanged
       }
       return Either.right([{
         _tag: "LabelChanged" as const,
@@ -127,7 +126,6 @@ export const decide = (
         newValue: cmd.label
       }])
     }),
-
     Match.tag("ChangeStreetNumber", (cmd) => {
       if (state.address === null) {
         return Either.left({ _tag: "AddressNotFound" as const })
@@ -143,7 +141,6 @@ export const decide = (
         newValue: cmd.streetNumber
       }])
     }),
-
     Match.tag("ChangeStreetName", (cmd) => {
       if (state.address === null) {
         return Either.left({ _tag: "AddressNotFound" as const })
@@ -159,7 +156,6 @@ export const decide = (
         newValue: cmd.streetName
       }])
     }),
-
     Match.tag("ChangeZipCode", (cmd) => {
       if (state.address === null) {
         return Either.left({ _tag: "AddressNotFound" as const })
@@ -175,7 +171,6 @@ export const decide = (
         newValue: cmd.zipCode
       }])
     }),
-
     Match.tag("ChangeCity", (cmd) => {
       if (state.address === null) {
         return Either.left({ _tag: "AddressNotFound" as const })
@@ -191,7 +186,6 @@ export const decide = (
         newValue: cmd.city
       }])
     }),
-
     Match.tag("ChangeCountry", (cmd) => {
       if (state.address === null) {
         return Either.left({ _tag: "AddressNotFound" as const })
@@ -207,7 +201,6 @@ export const decide = (
         newValue: cmd.country
       }])
     }),
-
     // -------------------------------------------------------------------------
     // DeleteAddress
     // -------------------------------------------------------------------------
@@ -233,7 +226,6 @@ export const decide = (
         country: state.address.country
       }])
     }),
-
     // -------------------------------------------------------------------------
     // RevertChange (the elegant, token-driven revert)
     // -------------------------------------------------------------------------
@@ -274,12 +266,11 @@ export const decide = (
             pr.field,
             cmd.id,
             cmd.revertToken,
-            pr.newValue,  // This was the "new" value, now it's "old"
-            pr.oldValue   // This was the "old" value, now it's "new"
+            pr.newValue, // This was the "new" value, now it's "old"
+            pr.oldValue // This was the "old" value, now it's "new"
           )
           return Either.right([revertedEvent])
         }),
-
         Match.tag("Creation", () => {
           // -----------------------------------------------------------------
           // REVERTING A CREATION
@@ -314,10 +305,9 @@ export const decide = (
           return Either.right([{
             _tag: "CreationReverted" as const,
             id: cmd.id,
-            revertToken: cmd.revertToken  // The consumed token (kept for audit trail)
+            revertToken: cmd.revertToken // The consumed token (kept for audit trail)
           }])
         }),
-
         Match.tag("Deletion", (pr) => {
           // -----------------------------------------------------------------
           // REVERTING A DELETION
@@ -336,7 +326,7 @@ export const decide = (
           return Either.right([{
             _tag: "AddressRestored" as const,
             id: cmd.id,
-            revertToken: cmd.revertToken,  // The consumed token (kept for audit trail)
+            revertToken: cmd.revertToken, // The consumed token (kept for audit trail)
             userId: pr.snapshot.userId,
             label: pr.snapshot.label,
             streetNumber: pr.snapshot.streetNumber,
@@ -346,13 +336,11 @@ export const decide = (
             country: pr.snapshot.country
           }])
         }),
-
         // Compile-time exhaustiveness — if we add a new RevertableChange variant,
         // TypeScript will error here until we handle it
         Match.exhaustive
       )
     }),
-
     // Compile-time exhaustiveness check
     Match.exhaustive
   )

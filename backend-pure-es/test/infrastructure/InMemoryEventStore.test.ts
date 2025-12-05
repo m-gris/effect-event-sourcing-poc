@@ -20,14 +20,14 @@ import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { StreamId } from "../../src/EventStore.js"
 
+// Import will fail until we create the implementation — that's TDD!
+// The test file drives the implementation.
+import { makeInMemoryEventStore } from "../../src/infrastructure/InMemoryEventStore.js"
+
 // We'll test with a simple event type (not importing domain events to keep tests focused)
 type TestEvent =
   | { readonly _tag: "EventA"; readonly value: string }
   | { readonly _tag: "EventB"; readonly value: number }
-
-// Import will fail until we create the implementation — that's TDD!
-// The test file drives the implementation.
-import { makeInMemoryEventStore } from "../../src/infrastructure/InMemoryEventStore.js"
 
 describe("InMemoryEventStore", () => {
   // ---------------------------------------------------------------------------
@@ -35,18 +35,17 @@ describe("InMemoryEventStore", () => {
   // ---------------------------------------------------------------------------
   describe("load", () => {
     it.effect("on non-existent stream → returns empty array", () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const store = makeInMemoryEventStore<TestEvent>()
         const streamId = StreamId("stream-1")
 
         const events = yield* store.load(streamId)
 
         expect(events).toEqual([])
-      })
-    )
+      }))
 
     it.effect("after append → returns appended events", () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const store = makeInMemoryEventStore<TestEvent>()
         const streamId = StreamId("stream-1")
         const event1: TestEvent = { _tag: "EventA", value: "hello" }
@@ -56,11 +55,10 @@ describe("InMemoryEventStore", () => {
         const events = yield* store.load(streamId)
 
         expect(events).toEqual([event1, event2])
-      })
-    )
+      }))
 
     it.effect("multiple appends → events accumulate in order", () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const store = makeInMemoryEventStore<TestEvent>()
         const streamId = StreamId("stream-1")
         const event1: TestEvent = { _tag: "EventA", value: "first" }
@@ -72,8 +70,7 @@ describe("InMemoryEventStore", () => {
         const events = yield* store.load(streamId)
 
         expect(events).toEqual([event1, event2, event3])
-      })
-    )
+      }))
   })
 
   // ---------------------------------------------------------------------------
@@ -81,7 +78,7 @@ describe("InMemoryEventStore", () => {
   // ---------------------------------------------------------------------------
   describe("stream isolation", () => {
     it.effect("events in one stream don't affect another", () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const store = makeInMemoryEventStore<TestEvent>()
         const stream1 = StreamId("stream-1")
         const stream2 = StreamId("stream-2")
@@ -96,8 +93,7 @@ describe("InMemoryEventStore", () => {
 
         expect(events1).toEqual([event1])
         expect(events2).toEqual([event2])
-      })
-    )
+      }))
   })
 
   // ---------------------------------------------------------------------------
@@ -105,7 +101,7 @@ describe("InMemoryEventStore", () => {
   // ---------------------------------------------------------------------------
   describe("append edge cases", () => {
     it.effect("append empty array → no-op, load still works", () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const store = makeInMemoryEventStore<TestEvent>()
         const streamId = StreamId("stream-1")
 
@@ -113,11 +109,10 @@ describe("InMemoryEventStore", () => {
         const events = yield* store.load(streamId)
 
         expect(events).toEqual([])
-      })
-    )
+      }))
 
     it.effect("append empty array to existing stream → no change", () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const store = makeInMemoryEventStore<TestEvent>()
         const streamId = StreamId("stream-1")
         const event1: TestEvent = { _tag: "EventA", value: "existing" }
@@ -127,7 +122,6 @@ describe("InMemoryEventStore", () => {
         const events = yield* store.load(streamId)
 
         expect(events).toEqual([event1])
-      })
-    )
+      }))
   })
 })
