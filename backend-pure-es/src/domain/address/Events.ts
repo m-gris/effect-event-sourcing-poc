@@ -5,6 +5,7 @@ import {
   City,
   Country,
   Label,
+  RevertToken,
   StreetName,
   StreetNumber,
   ZipCode
@@ -42,6 +43,7 @@ import {
 export const AddressCreated = Schema.Struct({
   _tag: Schema.Literal("AddressCreated"),
   id: AddressId,
+  revertToken: RevertToken,  // Token for the safety email revert link
   userId: UserId,
   label: Label,
   streetNumber: StreetNumber,
@@ -114,6 +116,7 @@ const makeFieldChangedEvent = <
   Schema.Struct({
     _tag: Schema.Literal(tag),  // Schema.Literal(tag) uses the literal type of Tag
     id: AddressId,
+    revertToken: RevertToken,   // Token for the safety email revert link
     oldValue: schema,           // schema's type flows through — oldValue: S
     newValue: schema            // same type for newValue
   })
@@ -164,10 +167,12 @@ export type CountryChanged = typeof CountryChanged.Type
 // -----------------------------------------------------------------------------
 // Emitted when an address is removed.
 // Contains a snapshot of all field values for potential restore via revert link.
+// Also includes revertToken for the safety email.
 //
 export const AddressDeleted = Schema.Struct({
   _tag: Schema.Literal("AddressDeleted"),
   id: AddressId,
+  revertToken: RevertToken,
   // Snapshot for restore capability
   userId: UserId,
   label: Label,
@@ -180,16 +185,131 @@ export const AddressDeleted = Schema.Struct({
 export type AddressDeleted = typeof AddressDeleted.Type
 
 // =============================================================================
-// AddressEvent (union of all events)
+// Field Reverted Events (generated from config)
 // =============================================================================
 //
-// Note: Revert events (LabelReverted, AddressRestored, etc.) will be added
-// when we implement the revert flow. For now, we focus on the core CRUD events.
+// Mirror of *Changed events, but for reverting a change.
+// Each carries the revertToken that was used (to mark it as consumed).
+//
+// DESIGN: *Reverted events have the same structure as *Changed events
+// (oldValue/newValue) but semantically represent "undoing" a previous change.
+// The oldValue is what we're reverting FROM (the changed value),
+// the newValue is what we're reverting TO (the original value).
 //
 
+const makeFieldRevertedEvent = <
+  Tag extends string,
+  S extends Schema.Schema.Any
+>(tag: Tag, schema: S) =>
+  Schema.Struct({
+    _tag: Schema.Literal(tag),
+    id: AddressId,
+    revertToken: RevertToken,
+    oldValue: schema,  // The value we're reverting from (post-change)
+    newValue: schema   // The value we're reverting to (pre-change)
+  })
+
+const fieldRevertedEvents = {
+  LabelReverted: makeFieldRevertedEvent("LabelReverted", addressFields.label),
+  StreetNumberReverted: makeFieldRevertedEvent("StreetNumberReverted", addressFields.streetNumber),
+  StreetNameReverted: makeFieldRevertedEvent("StreetNameReverted", addressFields.streetName),
+  ZipCodeReverted: makeFieldRevertedEvent("ZipCodeReverted", addressFields.zipCode),
+  CityReverted: makeFieldRevertedEvent("CityReverted", addressFields.city),
+  CountryReverted: makeFieldRevertedEvent("CountryReverted", addressFields.country)
+} as const
+
+export const {
+  LabelReverted,
+  StreetNumberReverted,
+  StreetNameReverted,
+  ZipCodeReverted,
+  CityReverted,
+  CountryReverted
+} = fieldRevertedEvents
+
+export type LabelReverted = typeof LabelReverted.Type
+export type StreetNumberReverted = typeof StreetNumberReverted.Type
+export type StreetNameReverted = typeof StreetNameReverted.Type
+export type ZipCodeReverted = typeof ZipCodeReverted.Type
+export type CityReverted = typeof CityReverted.Type
+export type CountryReverted = typeof CountryReverted.Type
+
+// =============================================================================
+// Correction Events (Terminal — NOT revertable)
+// =============================================================================
+//
+// KEY INSIGHT (Wlaschin/De Goes): There are TWO kinds of events:
+//
+// 1. USER ACTIONS: AddressCreated, *Changed, AddressDeleted
+//    - Represent intentional user changes
+//    - Carry a revertToken → revertable (user might have made a mistake)
+//    - When reverted, the token is consumed and removed from pendingReverts
+//
+// 2. CORRECTIONS: *Reverted, AddressRestored, CreationReverted
+//    - Represent "undoing a mistake"
+//    - Do NOT issue new tokens → terminal (you don't undo a correction)
+//    - If you could revert a revert, you'd have infinite undo chains
+//
+// This distinction prevents the "newRevertToken → newNewRevertToken → ..." trap.
+// Corrections are final. If user reverts by mistake, they redo the original action.
+//
+
+// -----------------------------------------------------------------------------
+// CreationReverted
+// -----------------------------------------------------------------------------
+// Emitted when an address creation is reverted (user decides they didn't
+// want to create this address after all).
+//
+// EFFECT: Sets address to null (like AddressDeleted) but:
+//   - Does NOT issue a new revert token (this is a correction, not a deletion)
+//   - Consumes the original creation token
+//
+// WHY NOT JUST USE AddressDeleted?
+// AddressDeleted is a user action — it issues a new token, making the deletion
+// revertable. CreationReverted is a correction — terminal, no new token.
+//
+export const CreationReverted = Schema.Struct({
+  _tag: Schema.Literal("CreationReverted"),
+  id: AddressId,
+  revertToken: RevertToken  // The consumed token (for audit trail)
+})
+export type CreationReverted = typeof CreationReverted.Type
+
+// -----------------------------------------------------------------------------
+// AddressRestored
+// -----------------------------------------------------------------------------
+// Emitted when a deleted address is restored via revert link.
+// Contains all fields to recreate the address from the snapshot.
+//
+// This is a CORRECTION event — terminal, no new token issued.
+// (The revertToken here is the consumed deletion token, not a new one.)
+//
+export const AddressRestored = Schema.Struct({
+  _tag: Schema.Literal("AddressRestored"),
+  id: AddressId,
+  revertToken: RevertToken,  // The consumed token (for audit trail)
+  userId: UserId,
+  label: Label,
+  streetNumber: StreetNumber,
+  streetName: StreetName,
+  zipCode: ZipCode,
+  city: City,
+  country: Country
+})
+export type AddressRestored = typeof AddressRestored.Type
+
+// =============================================================================
+// AddressEvent (union of all events)
+// =============================================================================
+
 export const AddressEvent = Schema.Union(
+  // User actions (revertable)
   AddressCreated,
   ...Object.values(fieldChangedEvents),
-  AddressDeleted
+  AddressDeleted,
+  // Corrections (terminal)
+  ...Object.values(fieldRevertedEvents),
+  CreationReverted,
+  AddressRestored
 )
 export type AddressEvent = typeof AddressEvent.Type
