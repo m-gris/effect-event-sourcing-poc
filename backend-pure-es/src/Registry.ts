@@ -1,30 +1,33 @@
 // =============================================================================
-// Registry — In-Memory Lookup Indexes
+// Registry — Event-Sourced Read Model (Projection)
 // =============================================================================
 //
 // PURPOSE:
-// A "poor man's read model" — maps human-readable identifiers to aggregate IDs.
-// Updated after each successful command. Not event-sourced, just cached indexes.
+// A PROJECTION — a read model derived from events.
+// Subscribes to domain events and builds lookup indexes.
 //
 // THREE LOOKUPS:
-//   - nickname → userId       (for /users/:nickname routes)
-//   - (userId, label) → addressId  (for /users/:nickname/addresses/:label)
-//   - revertToken → addressId      (for /revert/:token)
+//   - nickname → userId       (from UserCreated events)
+//   - (userId, label) → addressId  (from AddressCreated events)
+//   - revertToken → addressId      (from events with revertToken)
+//
+// EVENT-DRIVEN:
+// Registry.projectUserEvent(event) and Registry.projectAddressEvent(event)
+// update internal state based on event type. No imperative register* calls.
 //
 // EFFECT PATTERN:
 // Uses Ref<RegistryState> for explicit mutable state.
 // - Lookups return Effect<Option<Id>, never> — absence is Option, not error
-// - Mutations return Effect<void, never> — always succeed
+// - Projections return Effect<void, never> — always succeed
 //
 // WHY Ref?
 // Ref makes state access explicit as Effects. The lookup logic is pure;
 // the state access is effectful. De Goes approved.
 //
-// SCALA ANALOGY:
-// Ref ≈ ZIO's Ref — a mutable reference with effectful read/write.
-//
-import { Context, Effect, Layer, Option, Ref } from "effect"
-import type { UserId } from "./domain/user/State.js"
+import { Context, Effect, Layer, Match, Option, Ref } from "effect"
+import type { UserId, FirstName, LastName } from "./domain/user/State.js"
+import type { UserEvent } from "./domain/user/Events.js"
+import type { AddressEvent } from "./domain/address/Events.js"
 import type { AddressId, RevertToken } from "./domain/address/State.js"
 
 // =============================================================================
@@ -35,16 +38,29 @@ interface RegistryState {
   readonly nicknameToUserId: Map<string, UserId>
   readonly labelToAddressId: Map<string, AddressId> // key = `${userId}:${label}`
   readonly tokenToAddressId: Map<RevertToken, AddressId>
+  // Reverse lookup: addressId → (userId, label) — needed for CreationReverted
+  readonly addressIdToUserLabel: Map<AddressId, { userId: UserId; label: string }>
 }
 
 const emptyState = (): RegistryState => ({
   nicknameToUserId: new Map(),
   labelToAddressId: new Map(),
-  tokenToAddressId: new Map()
+  tokenToAddressId: new Map(),
+  addressIdToUserLabel: new Map()
 })
 
-// Helper: composite key for (userId, label) lookup
+// =============================================================================
+// Helpers
+// =============================================================================
+
+// Composite key for (userId, label) lookup
 const labelKey = (userId: UserId, label: string): string => `${userId}:${label}`
+
+// Derive nickname from firstName and lastName
+// "Jean" + "Dupont" → "jean-dupont"
+// "Jean Pierre" + "De La Fontaine" → "jean-pierre-de-la-fontaine"
+const deriveNickname = (firstName: FirstName, lastName: LastName): string =>
+  `${firstName}-${lastName}`.toLowerCase().replace(/\s+/g, "-")
 
 // =============================================================================
 // Registry Service Interface
@@ -56,11 +72,9 @@ export interface RegistryService {
   readonly getAddressIdByLabel: (userId: UserId, label: string) => Effect.Effect<Option.Option<AddressId>>
   readonly getAddressIdByToken: (token: RevertToken) => Effect.Effect<Option.Option<AddressId>>
 
-  // Mutations — always succeed
-  readonly registerUser: (nickname: string, userId: UserId) => Effect.Effect<void>
-  readonly registerAddress: (userId: UserId, label: string, addressId: AddressId) => Effect.Effect<void>
-  readonly registerToken: (token: RevertToken, addressId: AddressId) => Effect.Effect<void>
-  readonly unregisterToken: (token: RevertToken) => Effect.Effect<void>
+  // Projections — update state from events
+  readonly projectUserEvent: (event: UserEvent) => Effect.Effect<void>
+  readonly projectAddressEvent: (event: AddressEvent) => Effect.Effect<void>
 }
 
 // =============================================================================
@@ -72,10 +86,7 @@ export class Registry extends Context.Tag("Registry")<Registry, RegistryService>
 // =============================================================================
 // Factory: Create Registry from Ref
 // =============================================================================
-//
-// Takes a Ref<RegistryState> and returns the service implementation.
-// The Ref is created by the Layer; this factory just wires up the operations.
-//
+
 const makeRegistry = (ref: Ref.Ref<RegistryState>): RegistryService => ({
   // ---------------------------------------------------------------------------
   // Lookups
@@ -96,40 +107,182 @@ const makeRegistry = (ref: Ref.Ref<RegistryState>): RegistryService => ({
     ),
 
   // ---------------------------------------------------------------------------
-  // Mutations
+  // Projections
   // ---------------------------------------------------------------------------
-  registerUser: (nickname, userId) =>
-    Ref.update(ref, (state) => {
-      state.nicknameToUserId.set(nickname, userId)
-      return state
-    }),
 
-  registerAddress: (userId, label, addressId) =>
-    Ref.update(ref, (state) => {
-      state.labelToAddressId.set(labelKey(userId, label), addressId)
-      return state
-    }),
+  // Project UserEvent — only UserCreated affects the registry
+  projectUserEvent: (event) =>
+    Match.value(event).pipe(
+      Match.tag("UserCreated", (e) =>
+        Ref.update(ref, (state) => {
+          const nickname = deriveNickname(e.firstName, e.lastName)
+          state.nicknameToUserId.set(nickname, e.id)
+          return state
+        })
+      ),
+      // Name changes don't affect nickname (it's derived at creation time)
+      // In a real system, we might want to update nickname on name change
+      // For this PoC, nickname is immutable
+      Match.tag("FirstNameChanged", () => Effect.void),
+      Match.tag("LastNameChanged", () => Effect.void),
+      Match.exhaustive
+    ),
 
-  registerToken: (token, addressId) =>
-    Ref.update(ref, (state) => {
-      state.tokenToAddressId.set(token, addressId)
-      return state
-    }),
+  // Project AddressEvent — affects label lookup and token lookup
+  projectAddressEvent: (event) =>
+    Match.value(event).pipe(
+      // AddressCreated: register label → addressId and token → addressId
+      Match.tag("AddressCreated", (e) =>
+        Ref.update(ref, (state) => {
+          state.labelToAddressId.set(labelKey(e.userId, e.label), e.id)
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          state.addressIdToUserLabel.set(e.id, { userId: e.userId, label: e.label })
+          return state
+        })
+      ),
 
-  unregisterToken: (token) =>
-    Ref.update(ref, (state) => {
-      state.tokenToAddressId.delete(token)
-      return state
-    })
+      // Field changes: register new token → addressId
+      Match.tag("LabelChanged", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          // Also update the label mapping since label changed
+          const meta = state.addressIdToUserLabel.get(e.id)
+          if (meta) {
+            // Remove old label mapping
+            state.labelToAddressId.delete(labelKey(meta.userId, meta.label))
+            // Add new label mapping
+            state.labelToAddressId.set(labelKey(meta.userId, e.newValue), e.id)
+            // Update metadata
+            state.addressIdToUserLabel.set(e.id, { userId: meta.userId, label: e.newValue })
+          }
+          return state
+        })
+      ),
+
+      Match.tag("StreetNumberChanged", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          return state
+        })
+      ),
+
+      Match.tag("StreetNameChanged", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          return state
+        })
+      ),
+
+      Match.tag("ZipCodeChanged", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          return state
+        })
+      ),
+
+      Match.tag("CityChanged", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          return state
+        })
+      ),
+
+      Match.tag("CountryChanged", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          return state
+        })
+      ),
+
+      // AddressDeleted: register token for restore, keep label mapping for now
+      Match.tag("AddressDeleted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.set(e.revertToken, e.id)
+          return state
+        })
+      ),
+
+      // Corrections: consume token (remove from lookup)
+      Match.tag("LabelReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          // Revert the label mapping
+          const meta = state.addressIdToUserLabel.get(e.id)
+          if (meta) {
+            state.labelToAddressId.delete(labelKey(meta.userId, meta.label))
+            state.labelToAddressId.set(labelKey(meta.userId, e.newValue), e.id)
+            state.addressIdToUserLabel.set(e.id, { userId: meta.userId, label: e.newValue })
+          }
+          return state
+        })
+      ),
+
+      Match.tag("StreetNumberReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          return state
+        })
+      ),
+
+      Match.tag("StreetNameReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          return state
+        })
+      ),
+
+      Match.tag("ZipCodeReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          return state
+        })
+      ),
+
+      Match.tag("CityReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          return state
+        })
+      ),
+
+      Match.tag("CountryReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          return state
+        })
+      ),
+
+      // CreationReverted: remove label → addressId mapping entirely
+      Match.tag("CreationReverted", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          const meta = state.addressIdToUserLabel.get(e.id)
+          if (meta) {
+            state.labelToAddressId.delete(labelKey(meta.userId, meta.label))
+            state.addressIdToUserLabel.delete(e.id)
+          }
+          return state
+        })
+      ),
+
+      // AddressRestored: re-register label → addressId, consume token
+      Match.tag("AddressRestored", (e) =>
+        Ref.update(ref, (state) => {
+          state.tokenToAddressId.delete(e.revertToken)
+          state.labelToAddressId.set(labelKey(e.userId, e.label), e.id)
+          state.addressIdToUserLabel.set(e.id, { userId: e.userId, label: e.label })
+          return state
+        })
+      ),
+
+      Match.exhaustive
+    )
 })
 
 // =============================================================================
 // Layer: Provides Registry service
 // =============================================================================
-//
-// Creates a fresh Ref<RegistryState> and wires up the Registry service.
-// Use makeRegistryLayer() for tests (fresh state each time).
-//
+
 export const makeRegistryLayer = (): Layer.Layer<Registry> =>
   Layer.effect(
     Registry,
@@ -139,5 +292,11 @@ export const makeRegistryLayer = (): Layer.Layer<Registry> =>
     })
   )
 
-// Singleton layer for production (one registry for the app lifetime)
+// Singleton layer for production
 export const RegistryLive = makeRegistryLayer()
+
+// =============================================================================
+// Export helpers for use cases
+// =============================================================================
+
+export { deriveNickname }
