@@ -28,6 +28,7 @@ import { createUser } from "../usecases/CreateUser.js"
 import { getUser } from "../usecases/GetUser.js"
 import { createAddress } from "../usecases/CreateAddress.js"
 import { updateAddressField } from "../usecases/UpdateAddressField.js"
+import { deleteAddress } from "../usecases/DeleteAddress.js"
 import { revertChange } from "../usecases/RevertChange.js"
 
 // Import types for request/response schemas
@@ -87,6 +88,12 @@ const UpdateAddressFieldResponse = Schema.Struct({
   field: AddressFieldNameSchema,
   oldValue: Schema.String,
   newValue: Schema.String
+})
+
+// DeleteAddress
+const DeleteAddressResponse = Schema.Struct({
+  deleted: Schema.Boolean,
+  label: Schema.String
 })
 
 // RevertChange
@@ -197,6 +204,14 @@ const AddressesGroup = HttpApiGroup.make("addresses")
       .setPath(Schema.Struct({ nickname: Schema.String, label: Schema.String }))
       .setPayload(UpdateAddressFieldRequest)
       .addSuccess(UpdateAddressFieldResponse)
+      .addError(UserNotFoundError, { status: 404 })
+      .addError(AddressNotFoundError, { status: 404 })
+  )
+  .add(
+    // DELETE /users/:nickname/addresses/:label — delete an address
+    HttpApiEndpoint.del("deleteAddress", "/users/:nickname/addresses/:label")
+      .setPath(Schema.Struct({ nickname: Schema.String, label: Schema.String }))
+      .addSuccess(DeleteAddressResponse)
       .addError(UserNotFoundError, { status: 404 })
       .addError(AddressNotFoundError, { status: 404 })
   )
@@ -321,6 +336,28 @@ const AddressesHandlers = HttpApiBuilder.group(Api, "addresses", (handlers) =>
           field: result.field,
           oldValue: result.oldValue,
           newValue: result.newValue
+        }
+      }).pipe(
+        Effect.catchTag("UserNotFound", () =>
+          Effect.fail(new UserNotFoundError({ message: "User not found" }))
+        ),
+        Effect.catchTag("AddressNotFound", () =>
+          Effect.fail(new AddressNotFoundError({ message: "Address not found" }))
+        ),
+        Effect.catchTag("EmailSendError", (e) =>
+          Effect.die(new Error(`Email send failed: ${e.message}`))
+        )
+      )
+    )
+    .handle("deleteAddress", ({ path }) =>
+      Effect.gen(function* () {
+        const result = yield* deleteAddress({
+          nickname: path.nickname,
+          label: path.label
+        })
+        return {
+          deleted: result.deleted,
+          label: result.label
         }
       }).pipe(
         Effect.catchTag("UserNotFound", () =>
