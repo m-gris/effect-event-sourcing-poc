@@ -52,7 +52,7 @@ export function Revert() {
             <h1>Change Reverted</h1>
             <p>{message}</p>
             <p className="note">No confirmation email was sent (corrections are silent).</p>
-            <Link to="/profile" className="btn">Go to Profile</Link>
+            <Link to="/" className="btn">Go to Home</Link>
           </>
         )}
 
@@ -62,7 +62,7 @@ export function Revert() {
             <h1>Revert Failed</h1>
             <p>{message}</p>
             <p className="note">The token may have already been used or expired.</p>
-            <Link to="/profile" className="btn">Go to Profile</Link>
+            <Link to="/" className="btn">Go to Home</Link>
           </>
         )}
       </div>

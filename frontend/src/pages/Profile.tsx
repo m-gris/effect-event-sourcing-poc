@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import * as api from '../api'
 import './Profile.css'
-
-// localStorage key for persisting nickname across page reloads
-const NICKNAME_STORAGE_KEY = 'poc_user_nickname'
 
 // =============================================================================
 // Types
@@ -39,6 +36,9 @@ interface EditingState {
 // =============================================================================
 
 export function Profile() {
+  const { nickname } = useParams<{ nickname: string }>()
+  const navigate = useNavigate()
+
   // User state
   const [user, setUser] = useState<User | null>(null)
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -54,19 +54,18 @@ export function Profile() {
   const [showRevertModal, setShowRevertModal] = useState(false)
 
   // ---------------------------------------------------------------------------
-  // Load user on mount if nickname in localStorage
+  // Load user on mount from URL nickname param
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    const savedNickname = localStorage.getItem(NICKNAME_STORAGE_KEY)
-    if (!savedNickname) {
-      setInitialLoading(false)
+    if (!nickname) {
+      navigate('/')
       return
     }
 
-    api.getUser(savedNickname)
+    api.getUser(nickname)
       .then(result => {
         setUser({
-          nickname: savedNickname,
+          nickname: nickname,
           email: result.user.email,
           firstName: result.user.firstName,
           lastName: result.user.lastName
@@ -74,20 +73,12 @@ export function Profile() {
         setAddresses(result.addresses)
       })
       .catch(() => {
-        // User doesn't exist anymore (or backend restarted), clear localStorage
-        localStorage.removeItem(NICKNAME_STORAGE_KEY)
+        setError(`User "${nickname}" not found`)
       })
       .finally(() => {
         setInitialLoading(false)
       })
-  }, [])
-
-  // Create user form (shown when no user exists)
-  const [userForm, setUserForm] = useState({
-    email: 'jean.dupont@example.com',
-    firstName: 'Jean',
-    lastName: 'Dupont'
-  })
+  }, [nickname, navigate])
 
   // Add address form
   const [addressForm, setAddressForm] = useState({
@@ -105,26 +96,6 @@ export function Profile() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 4000)
-  }
-
-  // -----------------------------------------------------------------------------
-  // Create User
-  // -----------------------------------------------------------------------------
-  const handleCreateUser = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await api.createUser(userForm)
-      // Save nickname to localStorage for persistence across reloads
-      localStorage.setItem(NICKNAME_STORAGE_KEY, result.nickname)
-      setUser(result)
-      showToast(`Welcome, ${result.firstName}!`)
-    } catch (e: unknown) {
-      const err = e as api.ApiError
-      setError(err.message || 'Failed to create user')
-    } finally {
-      setLoading(false)
-    }
   }
 
   // -----------------------------------------------------------------------------
@@ -234,50 +205,17 @@ export function Profile() {
   }
 
   // -----------------------------------------------------------------------------
-  // Render: No user yet
+  // Render: User not found
   // -----------------------------------------------------------------------------
   if (!user) {
     return (
       <div className="profile-container">
         <div className="profile-header">
-          <h1>Create Your Profile</h1>
+          <h1>User Not Found</h1>
+          {error && <p className="error">{error}</p>}
           <p className="subtitle">
-            <Link to="/demo">Switch to Demo Funnel</Link>
+            <Link to="/">Go to Home</Link>
           </p>
-        </div>
-
-        {error && <div className="error">{error}</div>}
-
-        <div className="card">
-          <div className="form">
-            <label>
-              Email
-              <input
-                type="email"
-                value={userForm.email}
-                onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))}
-              />
-            </label>
-            <label>
-              First Name
-              <input
-                type="text"
-                value={userForm.firstName}
-                onChange={e => setUserForm(f => ({ ...f, firstName: e.target.value }))}
-              />
-            </label>
-            <label>
-              Last Name
-              <input
-                type="text"
-                value={userForm.lastName}
-                onChange={e => setUserForm(f => ({ ...f, lastName: e.target.value }))}
-              />
-            </label>
-            <button onClick={handleCreateUser} disabled={loading}>
-              {loading ? 'Creating...' : 'Create Profile'}
-            </button>
-          </div>
         </div>
       </div>
     )
@@ -298,7 +236,7 @@ export function Profile() {
           <h1>{user.firstName} {user.lastName}</h1>
           <p className="email">{user.email}</p>
         </div>
-        <Link to="/demo" className="switch-link">Demo Funnel →</Link>
+        <Link to="/" className="switch-link">Home</Link>
       </div>
 
       {error && <div className="error">{error}</div>}
