@@ -52,7 +52,7 @@ build:
     pnpm --filter {{backend}} build
 
 # Start the Pure ES backend server
-serve-pure-es:
+serve-backend-pure-es:
     pnpm --filter {{backend}} start
 
 # Start the frontend dev server
