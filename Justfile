@@ -64,3 +64,11 @@ dev:
     @echo "Run these in separate terminals:"
     @echo "  just serve-pure-es   # Backend on :3000"
     @echo "  just serve-frontend  # Frontend on :5173"
+
+# Run Cypress E2E tests headless (CI mode)
+test-e2e-headless:
+    pnpm --filter frontend e2e
+
+# Run Cypress E2E tests interactively (opens browser UI)
+test-e2e-ui:
+    pnpm --filter frontend cy:open
