@@ -25,6 +25,7 @@ import { Effect, Layer, Schema } from "effect"
 
 // Import use cases
 import { createUser } from "../usecases/CreateUser.js"
+import { getUser } from "../usecases/GetUser.js"
 import { createAddress } from "../usecases/CreateAddress.js"
 import { updateAddressField } from "../usecases/UpdateAddressField.js"
 import { revertChange } from "../usecases/RevertChange.js"
@@ -94,6 +95,25 @@ const RevertChangeResponse = Schema.Struct({
   message: Schema.String
 })
 
+// GetUser
+const GetUserAddressResponse = Schema.Struct({
+  label: Label,
+  streetNumber: StreetNumber,
+  streetName: StreetName,
+  zipCode: ZipCode,
+  city: City,
+  country: Country
+})
+
+const GetUserResponse = Schema.Struct({
+  user: Schema.Struct({
+    email: Email.schema,
+    firstName: FirstName,
+    lastName: LastName
+  }),
+  addresses: Schema.Array(GetUserAddressResponse)
+})
+
 // =============================================================================
 // Error Schemas
 // =============================================================================
@@ -151,6 +171,12 @@ const UsersGroup = HttpApiGroup.make("users")
       .addError(UserAlreadyExistsError, { status: 409 })
       .addError(NicknameAlreadyExistsError, { status: 409 })
   )
+  .add(
+    HttpApiEndpoint.get("getUser", "/users/:nickname")
+      .setPath(Schema.Struct({ nickname: Schema.String }))
+      .addSuccess(GetUserResponse)
+      .addError(UserNotFoundError, { status: 404 })
+  )
 
 // Addresses group
 const AddressesGroup = HttpApiGroup.make("addresses")
@@ -203,24 +229,49 @@ export type Api = typeof Api
 
 // Users handlers
 const UsersHandlers = HttpApiBuilder.group(Api, "users", (handlers) =>
-  handlers.handle("createUser", ({ payload }) =>
-    Effect.gen(function* () {
-      const result = yield* createUser(payload)
-      return {
-        nickname: result.nickname,
-        email: result.email,
-        firstName: result.firstName,
-        lastName: result.lastName
-      }
-    }).pipe(
-      Effect.catchTag("UserAlreadyExists", () =>
-        Effect.fail(new UserAlreadyExistsError({ message: "User already exists" }))
-      ),
-      Effect.catchTag("NicknameAlreadyExists", () =>
-        Effect.fail(new NicknameAlreadyExistsError({ message: "A user with this name already exists" }))
+  handlers
+    .handle("createUser", ({ payload }) =>
+      Effect.gen(function* () {
+        const result = yield* createUser(payload)
+        return {
+          nickname: result.nickname,
+          email: result.email,
+          firstName: result.firstName,
+          lastName: result.lastName
+        }
+      }).pipe(
+        Effect.catchTag("UserAlreadyExists", () =>
+          Effect.fail(new UserAlreadyExistsError({ message: "User already exists" }))
+        ),
+        Effect.catchTag("NicknameAlreadyExists", () =>
+          Effect.fail(new NicknameAlreadyExistsError({ message: "A user with this name already exists" }))
+        )
       )
     )
-  )
+    .handle("getUser", ({ path }) =>
+      Effect.gen(function* () {
+        const result = yield* getUser({ nickname: path.nickname })
+        return {
+          user: {
+            email: result.user.email,
+            firstName: result.user.firstName,
+            lastName: result.user.lastName
+          },
+          addresses: result.addresses.map(addr => ({
+            label: addr.label,
+            streetNumber: addr.streetNumber,
+            streetName: addr.streetName,
+            zipCode: addr.zipCode,
+            city: addr.city,
+            country: addr.country
+          }))
+        }
+      }).pipe(
+        Effect.catchTag("UserNotFound", () =>
+          Effect.fail(new UserNotFoundError({ message: "User not found" }))
+        )
+      )
+    )
 )
 
 // Addresses handlers

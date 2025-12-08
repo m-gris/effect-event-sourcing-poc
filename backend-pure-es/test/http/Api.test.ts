@@ -104,4 +104,133 @@ describe("HTTP API", () => {
       }
     })
   )
+
+  it.effect("GET /users/:nickname returns user with addresses", () =>
+    Effect.gen(function* () {
+      const emailCapture = makeCaptureEmailServiceLayer()
+
+      const AppDependencies = Layer.mergeAll(
+        InMemoryEventStores,
+        emailCapture.layer,
+        makeInMemoryRegistryLayer(),
+        UuidIdGeneratorLive
+      )
+
+      const TestLayer = Layer.mergeAll(
+        Layer.provide(ApiLive, AppDependencies),
+        HttpServer.layerContext
+      )
+
+      const { handler, dispose } = HttpApiBuilder.toWebHandler(TestLayer)
+
+      try {
+        // 1. Create user
+        yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/users", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: "jean.dupont@example.com",
+                firstName: "Jean",
+                lastName: "Dupont"
+              })
+            })
+          )
+        )
+
+        // 2. Create two addresses
+        yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/users/jean-dupont/addresses", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                label: "home",
+                streetNumber: "42",
+                streetName: "Rue de Rivoli",
+                zipCode: "75001",
+                city: "Paris",
+                country: "France"
+              })
+            })
+          )
+        )
+
+        yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/users/jean-dupont/addresses", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                label: "work",
+                streetNumber: "1",
+                streetName: "Avenue des Champs-Élysées",
+                zipCode: "75008",
+                city: "Paris",
+                country: "France"
+              })
+            })
+          )
+        )
+
+        // 3. GET user with addresses
+        const getUserResponse = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/users/jean-dupont", {
+              method: "GET"
+            })
+          )
+        )
+
+        expect(getUserResponse.status).toBe(200)
+        const result = yield* Effect.promise(() => getUserResponse.json())
+
+        expect(result.user.firstName).toBe("Jean")
+        expect(result.user.lastName).toBe("Dupont")
+        expect(result.user.email).toBe("jean.dupont@example.com")
+        expect(result.addresses).toHaveLength(2)
+
+        const labels = result.addresses.map((a: { label: string }) => a.label)
+        expect(labels).toContain("home")
+        expect(labels).toContain("work")
+      } finally {
+        yield* Effect.promise(() => dispose())
+      }
+    })
+  )
+
+  it.effect("GET /users/:nickname returns 404 for unknown user", () =>
+    Effect.gen(function* () {
+      const emailCapture = makeCaptureEmailServiceLayer()
+
+      const AppDependencies = Layer.mergeAll(
+        InMemoryEventStores,
+        emailCapture.layer,
+        makeInMemoryRegistryLayer(),
+        UuidIdGeneratorLive
+      )
+
+      const TestLayer = Layer.mergeAll(
+        Layer.provide(ApiLive, AppDependencies),
+        HttpServer.layerContext
+      )
+
+      const { handler, dispose } = HttpApiBuilder.toWebHandler(TestLayer)
+
+      try {
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request("http://localhost/users/nonexistent", {
+              method: "GET"
+            })
+          )
+        )
+
+        expect(response.status).toBe(404)
+      } finally {
+        yield* Effect.promise(() => dispose())
+      }
+    })
+  )
 })
