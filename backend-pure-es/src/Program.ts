@@ -12,7 +12,7 @@
 // SCALA ANALOGY:
 // Like a ZIO app with ZLayer.make — declare the recipe, ZIO bakes the cake.
 //
-import { Layer } from "effect"
+import { Layer, Redacted } from "effect"
 import { HttpApiBuilder } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { createServer } from "node:http"
@@ -20,13 +20,20 @@ import { createServer } from "node:http"
 // API definition and handlers
 import { ApiLive } from "./http/Api.js"
 
-// Infrastructure adapters
+// Infrastructure adapters — In-memory
 import { InMemoryEventStores } from "./infrastructure/InMemoryEventStore.js"
+import { makeInMemoryRegistryLayer } from "./infrastructure/InMemoryRegistry.js"
+
+// Infrastructure adapters — Postgres
+import { PostgresEventStores } from "./infrastructure/PostgresEventStore.js"
+import { PostgresRegistry } from "./infrastructure/PostgresRegistry.js"
+import { PgClient } from "@effect/sql-pg"
+
+// Infrastructure adapters — Email
 import { ConsoleEmailService } from "./infrastructure/ConsoleEmailService.js"
 import { EtherealEmailService } from "./infrastructure/EtherealEmailService.js"
 
 // Application services
-import { makeInMemoryRegistryLayer } from "./infrastructure/InMemoryRegistry.js"
 import { UuidIdGeneratorLive } from "./IdGenerator.js"
 
 // =============================================================================
@@ -39,6 +46,10 @@ const PORT = 3000
 // Usage: EMAIL_ADAPTER=ethereal pnpm start
 const EMAIL_ADAPTER = process.env.EMAIL_ADAPTER || "console"
 
+// Database adapter selection via environment variable
+// Usage: DATABASE_URL="postgres://..." pnpm start
+const DATABASE_URL = process.env.DATABASE_URL
+
 // =============================================================================
 // Layer Composition
 // =============================================================================
@@ -48,11 +59,18 @@ const EmailServiceLayer = EMAIL_ADAPTER === "ethereal"
   ? EtherealEmailService
   : ConsoleEmailService
 
+// Select database adapter based on config
+const StorageLayer = DATABASE_URL
+  ? Layer.provideMerge(
+      Layer.merge(PostgresEventStores, PostgresRegistry),
+      PgClient.layer({ url: Redacted.make(DATABASE_URL) })
+    )
+  : Layer.merge(InMemoryEventStores, makeInMemoryRegistryLayer())
+
 // Application dependencies (services needed by use cases)
 const AppDependencies = Layer.mergeAll(
-  InMemoryEventStores,
+  StorageLayer,
   EmailServiceLayer,
-  makeInMemoryRegistryLayer(),
   UuidIdGeneratorLive
 )
 
@@ -74,14 +92,21 @@ const emailAdapterInfo = EMAIL_ADAPTER === "ethereal"
   ? "📬 Ethereal (check console for preview URLs)"
   : "📝 Console (emails logged to terminal)"
 
+const dbAdapterInfo = DATABASE_URL
+  ? "🐘 PostgreSQL (persistent)"
+  : "💾 In-Memory (ephemeral)"
+
 console.log(`
 ═══════════════════════════════════════════════════════════════
   Event Triggers PoC — Pure Event Sourcing Backend
 ═══════════════════════════════════════════════════════════════
   Server starting on http://localhost:${PORT}
   Email adapter: ${emailAdapterInfo}
+  Database: ${dbAdapterInfo}
 
-  Switch adapters: EMAIL_ADAPTER=ethereal pnpm start
+  Switch adapters:
+    EMAIL_ADAPTER=ethereal pnpm start
+    DATABASE_URL="postgres://..." pnpm start
 
   Endpoints:
     POST  /users                              → Create user

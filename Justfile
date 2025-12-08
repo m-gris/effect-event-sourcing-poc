@@ -72,3 +72,43 @@ test-e2e-headless:
 # Run Cypress E2E tests interactively (opens browser UI)
 test-e2e-ui:
     pnpm --filter frontend cy:open
+
+# Start Postgres (dev database)
+db-up:
+    docker compose up -d postgres
+
+# Start Postgres test database
+db-test-up:
+    docker compose up -d postgres-test
+
+# Stop all databases
+db-down:
+    docker compose down
+
+# View database logs
+db-logs:
+    docker compose logs -f postgres
+
+# Reset database (drop and recreate tables)
+db-reset:
+    docker compose exec postgres psql -U postgres -d event_triggers -f /docker-entrypoint-initdb.d/001_init.sql
+
+# Start backend with Postgres
+serve-postgres:
+    DATABASE_URL="postgres://postgres:postgres@localhost:5432/event_triggers" pnpm --filter {{backend}} start
+
+# Run backend tests with Postgres (spins up DB, runs tests, tears down)
+test-backend-postgres:
+    #!/usr/bin/env bash
+    set -e
+    echo "Starting test database..."
+    docker compose up -d postgres-test
+    echo "Waiting for Postgres to be ready..."
+    until docker compose exec -T postgres-test pg_isready -U postgres > /dev/null 2>&1; do
+      sleep 1
+    done
+    echo "Running tests..."
+    DATABASE_URL="postgres://postgres:postgres@localhost:5433/event_triggers_test" pnpm --filter {{backend}} test run || TEST_EXIT=$?
+    echo "Stopping test database..."
+    docker compose stop postgres-test
+    exit ${TEST_EXIT:-0}
