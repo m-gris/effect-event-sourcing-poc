@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import * as api from '../api'
 import './Profile.css'
+
+// localStorage key for persisting nickname across page reloads
+const NICKNAME_STORAGE_KEY = 'poc_user_nickname'
 
 // =============================================================================
 // Types
@@ -41,13 +44,43 @@ export function Profile() {
   const [addresses, setAddresses] = useState<Address[]>([])
 
   // UI state
-  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true) // Loading on mount
+  const [loading, setLoading] = useState(false) // Loading for actions
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditingState | null>(null)
   const [showAddAddress, setShowAddAddress] = useState(false)
   const [revertToken, setRevertToken] = useState('')
   const [showRevertModal, setShowRevertModal] = useState(false)
+
+  // ---------------------------------------------------------------------------
+  // Load user on mount if nickname in localStorage
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const savedNickname = localStorage.getItem(NICKNAME_STORAGE_KEY)
+    if (!savedNickname) {
+      setInitialLoading(false)
+      return
+    }
+
+    api.getUser(savedNickname)
+      .then(result => {
+        setUser({
+          nickname: savedNickname,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName
+        })
+        setAddresses(result.addresses)
+      })
+      .catch(() => {
+        // User doesn't exist anymore (or backend restarted), clear localStorage
+        localStorage.removeItem(NICKNAME_STORAGE_KEY)
+      })
+      .finally(() => {
+        setInitialLoading(false)
+      })
+  }, [])
 
   // Create user form (shown when no user exists)
   const [userForm, setUserForm] = useState({
@@ -82,6 +115,8 @@ export function Profile() {
     setError(null)
     try {
       const result = await api.createUser(userForm)
+      // Save nickname to localStorage for persistence across reloads
+      localStorage.setItem(NICKNAME_STORAGE_KEY, result.nickname)
       setUser(result)
       showToast(`Welcome, ${result.firstName}!`)
     } catch (e: unknown) {
@@ -183,6 +218,19 @@ export function Profile() {
     zipCode: 'Zip',
     city: 'City',
     country: 'Country'
+  }
+
+  // -----------------------------------------------------------------------------
+  // Render: Initial loading
+  // -----------------------------------------------------------------------------
+  if (initialLoading) {
+    return (
+      <div className="profile-container">
+        <div className="profile-header">
+          <h1>Loading...</h1>
+        </div>
+      </div>
+    )
   }
 
   // -----------------------------------------------------------------------------

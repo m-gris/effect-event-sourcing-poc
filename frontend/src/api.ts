@@ -55,6 +55,22 @@ export interface RevertChangeResponse {
   message: string
 }
 
+export interface GetUserResponse {
+  user: {
+    email: string
+    firstName: string
+    lastName: string
+  }
+  addresses: Array<{
+    label: string
+    streetNumber: string
+    streetName: string
+    zipCode: string
+    city: string
+    country: string
+  }>
+}
+
 export interface ApiError {
   _tag: string
   message: string
@@ -111,4 +127,11 @@ export async function revertChange(token: string): Promise<RevertChangeResponse>
     method: 'POST'
   })
   return handleResponse<RevertChangeResponse>(response)
+}
+
+export async function getUser(nickname: string): Promise<GetUserResponse> {
+  const response = await fetch(`${API_BASE}/users/${nickname}`, {
+    method: 'GET'
+  })
+  return handleResponse<GetUserResponse>(response)
 }
