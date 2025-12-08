@@ -14,12 +14,13 @@
 //
 import { Effect, Option } from "effect"
 import type { RevertToken } from "../domain/address/State.js"
-import { AddressEventStore, StreamId } from "../EventStore.js"
+import { AddressEventStore, UserEventStore, StreamId } from "../EventStore.js"
 import { makeCommandHandler } from "../application/CommandHandler.js"
 import { decide } from "../domain/address/decide.js"
 import { evolve } from "../domain/address/evolve.js"
+import { evolve as userEvolve } from "../domain/user/evolve.js"
 import { initialAddressState } from "../domain/address/State.js"
-import { Registry } from "../Registry.js"
+import { Registry, deriveNickname } from "../Registry.js"
 
 // =============================================================================
 // NOTE: No EmailService, No reactToAddressEvent
@@ -46,6 +47,7 @@ export interface RevertChangeInput {
 export interface RevertChangeOutput {
   readonly reverted: boolean
   readonly message: string
+  readonly nickname: string // For redirect back to user profile
 }
 
 // =============================================================================
@@ -79,7 +81,7 @@ export const revertChange = (
 ): Effect.Effect<
   RevertChangeOutput,
   RevertChangeError,
-  AddressEventStore | Registry
+  AddressEventStore | UserEventStore | Registry
 > =>
   Effect.gen(function* () {
     const { token } = input
@@ -115,10 +117,33 @@ export const revertChange = (
       yield* registry.projectAddressEvent(event)
     }
 
-    // 4. Return confirmation
+    // 4. Get nickname for redirect
+    //    Load address events to find the AddressCreated event (has userId)
+    const addressStore = yield* AddressEventStore
+    const addressEvents = yield* addressStore.load(StreamId(addressId))
+
+    // The userId is on the AddressCreated event
+    const createdEvent = addressEvents.find(e => e._tag === "AddressCreated")
+    if (!createdEvent || createdEvent._tag !== "AddressCreated") {
+      return yield* Effect.die(new Error("BUG: No AddressCreated event found"))
+    }
+    const userId = createdEvent.userId
+
+    const userStore = yield* UserEventStore
+    const userEvents = yield* userStore.load(StreamId(userId))
+    const userState = userEvents.reduce(userEvolve, Option.none())
+
+    if (Option.isNone(userState)) {
+      return yield* Effect.die(new Error("BUG: User not found for address"))
+    }
+    const user = userState.value
+    const nickname = deriveNickname(user.firstName, user.lastName)
+
+    // 5. Return confirmation with nickname for redirect
     //    NOTE: No reactToAddressEvent call — corrections are SILENT (no email)
     return {
       reverted: true,
-      message: "Change successfully reverted"
+      message: "Change successfully reverted",
+      nickname
     }
   })

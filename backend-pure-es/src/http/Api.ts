@@ -92,7 +92,8 @@ const UpdateAddressFieldResponse = Schema.Struct({
 // RevertChange
 const RevertChangeResponse = Schema.Struct({
   reverted: Schema.Boolean,
-  message: Schema.String
+  message: Schema.String,
+  nickname: Schema.String
 })
 
 // GetUser
@@ -340,7 +341,8 @@ const AddressesHandlers = HttpApiBuilder.group(Api, "addresses", (handlers) =>
         })
         return {
           reverted: result.reverted,
-          message: result.message
+          message: result.message,
+          nickname: result.nickname
         }
       }).pipe(
         Effect.catchTag("TokenNotFound", () =>

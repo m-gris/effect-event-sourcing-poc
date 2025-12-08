@@ -7,6 +7,7 @@ export function Revert() {
   const { token } = useParams<{ token: string }>()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const [nickname, setNickname] = useState<string | null>(null)
 
   // Guard against double-execution in React StrictMode
   const hasCalledRef = useRef(false)
@@ -28,6 +29,7 @@ export function Revert() {
       .then((result) => {
         setStatus('success')
         setMessage(result.message)
+        setNickname(result.nickname)
       })
       .catch((err: api.ApiError) => {
         setStatus('error')
@@ -52,7 +54,9 @@ export function Revert() {
             <h1>Change Reverted</h1>
             <p>{message}</p>
             <p className="note">No confirmation email was sent (corrections are silent).</p>
-            <Link to="/" className="btn">Go to Home</Link>
+            <Link to={nickname ? `/users/${nickname}` : '/'} className="btn">
+              {nickname ? 'Back to Profile' : 'Go to Home'}
+            </Link>
           </>
         )}
 

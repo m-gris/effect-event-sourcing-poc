@@ -53,6 +53,7 @@ export interface UpdateAddressFieldResponse {
 export interface RevertChangeResponse {
   reverted: boolean
   message: string
+  nickname: string
 }
 
 export interface GetUserResponse {
