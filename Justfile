@@ -7,13 +7,33 @@ default:
     @just --list
 
 # Type-check backend
-check:
+check-backend:
     pnpm --filter {{backend}} check
 
-# Run backend tests
+# Type-check frontend
+check-frontend:
+    pnpm --filter frontend check
+
+# Type-check all
+check:
+    just check-backend
+    just check-frontend
+
+# Run all tests (backend + frontend)
 test:
     just check
     pnpm --filter {{backend}} test
+    pnpm --filter frontend test:run
+
+# Run backend tests only
+test-backend:
+    just check-backend
+    pnpm --filter {{backend}} test
+
+# Run frontend tests only
+test-frontend:
+    just check-frontend
+    pnpm --filter frontend test:run
 
 # Run backend tests in watch mode
 test-watch:
