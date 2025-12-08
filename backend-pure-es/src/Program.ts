@@ -26,7 +26,7 @@ import { ConsoleEmailService } from "./infrastructure/ConsoleEmailService.js"
 import { EtherealEmailService } from "./infrastructure/EtherealEmailService.js"
 
 // Application services
-import { makeRegistryLayer } from "./Registry.js"
+import { makeInMemoryRegistryLayer } from "./infrastructure/InMemoryRegistry.js"
 import { UuidIdGeneratorLive } from "./IdGenerator.js"
 
 // =============================================================================
@@ -52,7 +52,7 @@ const EmailServiceLayer = EMAIL_ADAPTER === "ethereal"
 const AppDependencies = Layer.mergeAll(
   InMemoryEventStores,
   EmailServiceLayer,
-  makeRegistryLayer(),
+  makeInMemoryRegistryLayer(),
   UuidIdGeneratorLive
 )
 

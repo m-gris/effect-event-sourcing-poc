@@ -26,10 +26,8 @@ import type { UserEvent } from "../src/domain/user/Events.js"
 import type { AddressEvent } from "../src/domain/address/Events.js"
 import type { Address, AddressId, RevertToken } from "../src/domain/address/State.js"
 
-import {
-  Registry,
-  makeRegistryLayer
-} from "../src/Registry.js"
+import { Registry } from "../src/Registry.js"
+import { makeInMemoryRegistryLayer } from "../src/infrastructure/InMemoryRegistry.js"
 
 // =============================================================================
 // Test Fixtures
@@ -73,7 +71,7 @@ describe("Registry", () => {
         const result = yield* registry.getUserIdByNickname("unknown")
 
         expect(result).toEqual(Option.none())
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("returns Some(userId) after projecting UserCreated", () =>
@@ -91,7 +89,7 @@ describe("Registry", () => {
         const result = yield* registry.getUserIdByNickname(expectedNickname)
 
         expect(result).toEqual(Option.some(userId))
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("nickname is lowercase hyphenated", () =>
@@ -110,7 +108,7 @@ describe("Registry", () => {
         // Nickname should be lowercase, spaces become hyphens
         const result = yield* registry.getUserIdByNickname("jean-pierre-de-la-fontaine")
         expect(result).toEqual(Option.some(userId))
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
   })
 
@@ -125,7 +123,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByLabel(userId, label)
 
         expect(result).toEqual(Option.none())
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("returns Some(addressId) after projecting AddressCreated", () =>
@@ -141,7 +139,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByLabel(userId, label)
 
         expect(result).toEqual(Option.some(addressId))
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("different users can have same label", () =>
@@ -177,7 +175,7 @@ describe("Registry", () => {
 
         expect(result1).toEqual(Option.some(addressId))
         expect(result2).toEqual(Option.some(otherAddressId))
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("returns None after projecting CreationReverted", () =>
@@ -199,7 +197,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByLabel(userId, label)
 
         expect(result).toEqual(Option.none())
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
   })
 
@@ -214,7 +212,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByToken(token)
 
         expect(result).toEqual(Option.none())
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("returns Some(addressId) after projecting AddressCreated", () =>
@@ -230,7 +228,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByToken(token)
 
         expect(result).toEqual(Option.some(addressId))
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("returns Some(addressId) after projecting CityChanged", () =>
@@ -248,7 +246,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByToken(token)
 
         expect(result).toEqual(Option.some(addressId))
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
 
     it.effect("returns None after projecting *Reverted (token consumed)", () =>
@@ -274,7 +272,7 @@ describe("Registry", () => {
         const result = yield* registry.getAddressIdByToken(token)
 
         expect(result).toEqual(Option.none())
-      }).pipe(Effect.provide(makeRegistryLayer()))
+      }).pipe(Effect.provide(makeInMemoryRegistryLayer()))
     )
   })
 })

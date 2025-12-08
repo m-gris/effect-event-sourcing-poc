@@ -13,7 +13,7 @@ import { createUser } from "../../src/usecases/CreateUser.js"
 import { createAddress } from "../../src/usecases/CreateAddress.js"
 import { InMemoryEventStores } from "../../src/infrastructure/InMemoryEventStore.js"
 import { makeCaptureEmailService } from "../../src/infrastructure/ConsoleEmailService.js"
-import { makeRegistryLayer } from "../../src/Registry.js"
+import { makeInMemoryRegistryLayer } from "../../src/infrastructure/InMemoryRegistry.js"
 import { makeTestIdGenerator } from "../../src/IdGenerator.js"
 import { IdGenerator } from "../../src/IdGenerator.js"
 import { EmailService } from "../../src/EmailService.js"
@@ -25,7 +25,7 @@ describe("RevertChange use case", () => {
     const layer = Layer.mergeAll(
       InMemoryEventStores,
       Layer.succeed(EmailService, emailCapture.service),
-      makeRegistryLayer(),
+      makeInMemoryRegistryLayer(),
       Layer.succeed(IdGenerator, makeTestIdGenerator())
     )
     return { layer, emailCapture }

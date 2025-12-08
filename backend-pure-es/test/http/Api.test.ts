@@ -15,7 +15,7 @@ import { HttpApiBuilder, HttpServer } from "@effect/platform"
 import { ApiLive } from "../../src/http/Api.js"
 import { InMemoryEventStores } from "../../src/infrastructure/InMemoryEventStore.js"
 import { makeCaptureEmailServiceLayer } from "../../src/infrastructure/ConsoleEmailService.js"
-import { makeRegistryLayer } from "../../src/Registry.js"
+import { makeInMemoryRegistryLayer } from "../../src/infrastructure/InMemoryRegistry.js"
 import { UuidIdGeneratorLive } from "../../src/IdGenerator.js"
 
 describe("HTTP API", () => {
@@ -36,7 +36,7 @@ describe("HTTP API", () => {
       const AppDependencies = Layer.mergeAll(
         InMemoryEventStores,
         emailCapture.layer,
-        makeRegistryLayer(),
+        makeInMemoryRegistryLayer(),
         UuidIdGeneratorLive
       )
 

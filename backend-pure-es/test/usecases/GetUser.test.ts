@@ -16,7 +16,7 @@ import { updateAddressField } from "../../src/usecases/UpdateAddressField.js"
 import { revertChange } from "../../src/usecases/RevertChange.js"
 import { InMemoryEventStores } from "../../src/infrastructure/InMemoryEventStore.js"
 import { makeCaptureEmailService } from "../../src/infrastructure/ConsoleEmailService.js"
-import { makeRegistryLayer } from "../../src/Registry.js"
+import { makeInMemoryRegistryLayer } from "../../src/infrastructure/InMemoryRegistry.js"
 import { makeTestIdGenerator, IdGenerator } from "../../src/IdGenerator.js"
 import { EmailService } from "../../src/EmailService.js"
 import type { RevertToken } from "../../src/domain/address/State.js"
@@ -27,7 +27,7 @@ describe("GetUser use case", () => {
     const layer = Layer.mergeAll(
       InMemoryEventStores,
       Layer.succeed(EmailService, emailCapture.service),
-      makeRegistryLayer(),
+      makeInMemoryRegistryLayer(),
       Layer.succeed(IdGenerator, makeTestIdGenerator())
     )
     return { layer, emailCapture }

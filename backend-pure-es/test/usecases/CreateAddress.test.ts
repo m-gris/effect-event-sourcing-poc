@@ -19,7 +19,8 @@ import { Effect, Layer, Option } from "effect"
 import { Email } from "../../src/shared/Email.js"
 import type { FirstName, LastName, UserId } from "../../src/domain/user/State.js"
 import type { Address } from "../../src/domain/address/State.js"
-import { Registry, makeRegistryLayer } from "../../src/Registry.js"
+import { Registry } from "../../src/Registry.js"
+import { makeInMemoryRegistryLayer } from "../../src/infrastructure/InMemoryRegistry.js"
 import { InMemoryUserEventStore, InMemoryAddressEventStore } from "../../src/infrastructure/InMemoryEventStore.js"
 import { TestIdGeneratorLive } from "../../src/IdGenerator.js"
 import { EmailService } from "../../src/EmailService.js"
@@ -74,7 +75,7 @@ describe("createAddress", () => {
       Effect.provide(Layer.mergeAll(
         InMemoryUserEventStore,
         InMemoryAddressEventStore,
-        makeRegistryLayer(),
+        makeInMemoryRegistryLayer(),
         TestIdGeneratorLive,
         Layer.succeed(EmailService, makeCaptureEmailService().service)
       ))
@@ -106,7 +107,7 @@ describe("createAddress", () => {
       Effect.provide(Layer.mergeAll(
         InMemoryUserEventStore,
         InMemoryAddressEventStore,
-        makeRegistryLayer(),
+        makeInMemoryRegistryLayer(),
         TestIdGeneratorLive,
         Layer.succeed(EmailService, makeCaptureEmailService().service)
       ))
@@ -140,7 +141,7 @@ describe("createAddress", () => {
       Effect.provide(Layer.mergeAll(
         InMemoryUserEventStore,
         InMemoryAddressEventStore,
-        makeRegistryLayer(),
+        makeInMemoryRegistryLayer(),
         TestIdGeneratorLive,
         Layer.succeed(EmailService, capture.service)
       ))
@@ -162,7 +163,7 @@ describe("createAddress", () => {
       Effect.provide(Layer.mergeAll(
         InMemoryUserEventStore,
         InMemoryAddressEventStore,
-        makeRegistryLayer(),
+        makeInMemoryRegistryLayer(),
         TestIdGeneratorLive,
         Layer.succeed(EmailService, makeCaptureEmailService().service)
       ))
@@ -196,7 +197,7 @@ describe("createAddress", () => {
       Effect.provide(Layer.mergeAll(
         InMemoryUserEventStore,
         InMemoryAddressEventStore,
-        makeRegistryLayer(),
+        makeInMemoryRegistryLayer(),
         TestIdGeneratorLive,
         Layer.succeed(EmailService, makeCaptureEmailService().service)
       ))

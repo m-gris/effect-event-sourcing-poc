@@ -15,7 +15,8 @@ import { describe, expect, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
 import { Email } from "../../src/shared/Email.js"
 import type { FirstName, LastName } from "../../src/domain/user/State.js"
-import { Registry, makeRegistryLayer } from "../../src/Registry.js"
+import { Registry } from "../../src/Registry.js"
+import { makeInMemoryRegistryLayer } from "../../src/infrastructure/InMemoryRegistry.js"
 import { InMemoryUserEventStore } from "../../src/infrastructure/InMemoryEventStore.js"
 import { TestIdGeneratorLive } from "../../src/IdGenerator.js"
 
@@ -34,7 +35,7 @@ const testLastName = "Dupont" as LastName
 // Each layer uses Layer.effect internally, so fresh instances per test
 const TestLayer = Layer.mergeAll(
   InMemoryUserEventStore,
-  makeRegistryLayer(),
+  makeInMemoryRegistryLayer(),
   TestIdGeneratorLive
 )
 
