@@ -40,13 +40,16 @@ interface RegistryState {
   readonly tokenToAddressId: Map<RevertToken, AddressId>
   // Reverse lookup: addressId → (userId, label) — needed for CreationReverted
   readonly addressIdToUserLabel: Map<AddressId, { userId: UserId; label: string }>
+  // userId → Set<AddressId> — needed for GetUser to list all addresses
+  readonly userIdToAddressIds: Map<UserId, Set<AddressId>>
 }
 
 const emptyState = (): RegistryState => ({
   nicknameToUserId: new Map(),
   labelToAddressId: new Map(),
   tokenToAddressId: new Map(),
-  addressIdToUserLabel: new Map()
+  addressIdToUserLabel: new Map(),
+  userIdToAddressIds: new Map()
 })
 
 // =============================================================================
@@ -71,6 +74,8 @@ export interface RegistryService {
   readonly getUserIdByNickname: (nickname: string) => Effect.Effect<Option.Option<UserId>>
   readonly getAddressIdByLabel: (userId: UserId, label: string) => Effect.Effect<Option.Option<AddressId>>
   readonly getAddressIdByToken: (token: RevertToken) => Effect.Effect<Option.Option<AddressId>>
+  // List all address IDs for a user — needed for GetUser use case
+  readonly getAddressIdsByUserId: (userId: UserId) => Effect.Effect<ReadonlyArray<AddressId>>
 
   // Projections — update state from events
   readonly projectUserEvent: (event: UserEvent) => Effect.Effect<void>
@@ -106,6 +111,14 @@ const makeRegistry = (ref: Ref.Ref<RegistryState>): RegistryService => ({
       Effect.map((state) => Option.fromNullable(state.tokenToAddressId.get(token)))
     ),
 
+  getAddressIdsByUserId: (userId) =>
+    Ref.get(ref).pipe(
+      Effect.map((state) => {
+        const set = state.userIdToAddressIds.get(userId)
+        return set ? Array.from(set) : []
+      })
+    ),
+
   // ---------------------------------------------------------------------------
   // Projections
   // ---------------------------------------------------------------------------
@@ -137,6 +150,10 @@ const makeRegistry = (ref: Ref.Ref<RegistryState>): RegistryService => ({
           state.labelToAddressId.set(labelKey(e.userId, e.label), e.id)
           state.tokenToAddressId.set(e.revertToken, e.id)
           state.addressIdToUserLabel.set(e.id, { userId: e.userId, label: e.label })
+          // Add to userId → addressIds lookup
+          const existing = state.userIdToAddressIds.get(e.userId) ?? new Set()
+          existing.add(e.id)
+          state.userIdToAddressIds.set(e.userId, existing)
           return state
         })
       ),
@@ -260,6 +277,11 @@ const makeRegistry = (ref: Ref.Ref<RegistryState>): RegistryService => ({
           if (meta) {
             state.labelToAddressId.delete(labelKey(meta.userId, meta.label))
             state.addressIdToUserLabel.delete(e.id)
+            // Remove from userId → addressIds lookup
+            const set = state.userIdToAddressIds.get(meta.userId)
+            if (set) {
+              set.delete(e.id)
+            }
           }
           return state
         })
@@ -271,6 +293,10 @@ const makeRegistry = (ref: Ref.Ref<RegistryState>): RegistryService => ({
           state.tokenToAddressId.delete(e.revertToken)
           state.labelToAddressId.set(labelKey(e.userId, e.label), e.id)
           state.addressIdToUserLabel.set(e.id, { userId: e.userId, label: e.label })
+          // Re-add to userId → addressIds lookup
+          const existing = state.userIdToAddressIds.get(e.userId) ?? new Set()
+          existing.add(e.id)
+          state.userIdToAddressIds.set(e.userId, existing)
           return state
         })
       ),
